@@ -1,0 +1,223 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════
+   THEME DEFINITIONS
+   ═══════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-tertiary: #2e2e2e;
+  --text-primary: #e8e8e8;
+  --text-secondary: #909090;
+  --accent: #7c6af7;
+  --accent-hover: #6b59e6;
+  --border: #3a3a3a;
+  --surface: #303030;
+  --user-bubble: #2d2b4e;
+  --scrollbar: #3a3a3a;
+  --danger: #ef4444;
+}
+
+[data-theme="amoled"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #111111;
+  --text-primary: #f0f0f0;
+  --text-secondary: #707070;
+  --accent: #7c6af7;
+  --accent-hover: #6b59e6;
+  --border: #1f1f1f;
+  --surface: #161616;
+  --user-bubble: #1a1830;
+  --scrollbar: #222222;
+  --danger: #ef4444;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ebebeb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --accent: #6b59e6;
+  --accent-hover: #5a48d5;
+  --border: #d8d8d8;
+  --surface: #ffffff;
+  --user-bubble: #ede9ff;
+  --scrollbar: #d0d0d0;
+  --danger: #dc2626;
+}
+
+[data-theme="dracula"] {
+  --bg-primary: #282a36;
+  --bg-secondary: #1e1f29;
+  --bg-tertiary: #343746;
+  --text-primary: #f8f8f2;
+  --text-secondary: #6272a4;
+  --accent: #bd93f9;
+  --accent-hover: #a87ff5;
+  --border: #44475a;
+  --surface: #3d4059;
+  --user-bubble: #3a2f5c;
+  --scrollbar: #44475a;
+  --danger: #ff5555;
+}
+
+[data-theme="nord"] {
+  --bg-primary: #2e3440;
+  --bg-secondary: #242933;
+  --bg-tertiary: #3b4252;
+  --text-primary: #eceff4;
+  --text-secondary: #81a1c1;
+  --accent: #88c0d0;
+  --accent-hover: #6aacbe;
+  --border: #4c566a;
+  --surface: #434c5e;
+  --user-bubble: #2a3d4d;
+  --scrollbar: #4c566a;
+  --danger: #bf616a;
+}
+
+[data-theme="cyberpunk"] {
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1a1a00;
+  --text-primary: #f0f000;
+  --text-secondary: #00cccc;
+  --accent: #00ffff;
+  --accent-hover: #00cccc;
+  --border: #1a2a00;
+  --surface: #0a1a00;
+  --user-bubble: #001a1a;
+  --scrollbar: #1a2a00;
+  --danger: #ff003c;
+}
+
+[data-theme="solarized"] {
+  --bg-primary: #002b36;
+  --bg-secondary: #073642;
+  --bg-tertiary: #0d4553;
+  --text-primary: #fdf6e3;
+  --text-secondary: #93a1a1;
+  --accent: #268bd2;
+  --accent-hover: #1a7ab8;
+  --border: #094555;
+  --surface: #0a3d4a;
+  --user-bubble: #0a2a35;
+  --scrollbar: #094555;
+  --danger: #dc322f;
+}
+
+/* ═══════════════════════════════════════════════
+   SEMANTIC COMPONENT CLASSES
+   ═══════════════════════════════════════════════ */
+
+@layer components {
+  .app-bg { background-color: var(--bg-primary); color: var(--text-primary); }
+  .panel { background-color: var(--bg-secondary); border-color: var(--border); }
+  .surface { background-color: var(--surface); }
+  .tertiary { background-color: var(--bg-tertiary); }
+  .text-muted { color: var(--text-secondary); }
+  .border-subtle { border-color: var(--border); }
+  .accent-text { color: var(--accent); }
+  .accent-bg { background-color: var(--accent); }
+  .user-bubble { background-color: var(--user-bubble); }
+
+  .btn-primary {
+    background-color: var(--accent);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: background-color 0.15s;
+  }
+  .btn-primary:hover { background-color: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
+
+  .input-field {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: var(--accent); }
+  .input-field::placeholder { color: var(--text-secondary); }
+}
+
+/* ═══════════════════════════════════════════════
+   GLOBAL STYLES
+   ═══════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* Blinking cursor for streaming */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.streaming-cursor::after {
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  color: var(--accent);
+  margin-left: 1px;
+}
+
+/* Slide-in panel animation */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in { animation: fadeIn 0.15s ease-out; }
+
+/* Code block overrides for dark syntax themes */
+pre { border-radius: 0.5rem; overflow: hidden; }
