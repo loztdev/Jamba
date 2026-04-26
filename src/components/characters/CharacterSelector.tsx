@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { X, Plus, Edit2, Trash2, Check } from 'lucide-react'
+import { X, Plus, Edit2, Trash2, Check, Sparkles } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import clsx from 'clsx'
 import type { Character } from '../../types'
+import { AICharacterBuilder } from './AICharacterBuilder'
 
 interface CharacterSelectorProps {
   onClose: () => void
@@ -25,6 +26,7 @@ function CharacterForm({
   const [color, setColor] = useState(initial?.color ?? '#bd93f9')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? '')
+  const tags = initial?.tags ?? []
 
   function handleSave() {
     if (!name.trim() || !systemPrompt.trim()) return
@@ -34,7 +36,7 @@ function CharacterForm({
       color,
       description: description.trim(),
       systemPrompt: systemPrompt.trim(),
-      tags: [],
+      tags,
     })
   }
 
@@ -117,6 +119,10 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
 
   const [editId, setEditId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [aiDraft, setAiDraft] = useState<Partial<Character> | null>(null)
+  const [showAIBuilder, setShowAIBuilder] = useState(false)
+  const [punchUpId, setPunchUpId] = useState<string | null>(null)
+  const punchUpTarget = punchUpId ? characters.find((c) => c.id === punchUpId) ?? null : null
 
   function selectCharacter(charId: string | null) {
     if (!activeChatId) { onClose(); return }
@@ -149,10 +155,21 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
         <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {isCreating ? (
             <div className="mb-4">
-              <h3 className="font-semibold text-sm mb-3">New Character</h3>
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                {aiDraft && <Sparkles size={14} style={{ color: 'var(--accent)' }} />}
+                {aiDraft ? 'New Character (AI Draft)' : 'New Character'}
+              </h3>
               <CharacterForm
-                onSave={(c) => { addCharacter(c); setIsCreating(false) }}
-                onCancel={() => setIsCreating(false)}
+                initial={aiDraft ?? undefined}
+                onSave={(c) => {
+                  addCharacter(c)
+                  setIsCreating(false)
+                  setAiDraft(null)
+                }}
+                onCancel={() => {
+                  setIsCreating(false)
+                  setAiDraft(null)
+                }}
               />
             </div>
           ) : null}
@@ -240,6 +257,14 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
                 {!char.isBuiltIn && (
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
+                      onClick={(e) => { e.stopPropagation(); setPunchUpId(char.id) }}
+                      className="p-1 rounded-md"
+                      style={{ background: 'var(--bg-secondary)', color: 'var(--accent)' }}
+                      title="AI Punch Up"
+                    >
+                      <Sparkles size={11} />
+                    </button>
+                    <button
                       onClick={(e) => { e.stopPropagation(); setEditId(char.id) }}
                       className="p-1 rounded-md"
                       style={{ background: 'var(--bg-secondary)' }}
@@ -263,17 +288,48 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-subtle p-3 shrink-0">
+        <div className="border-t border-subtle p-3 shrink-0 flex gap-2">
           <button
-            onClick={() => setIsCreating(true)}
-            className="btn-ghost flex items-center gap-2 w-full justify-center text-sm border border-subtle rounded-xl py-2"
+            onClick={() => { setAiDraft(null); setIsCreating(true) }}
+            className="btn-ghost flex items-center gap-2 flex-1 justify-center text-sm border border-subtle rounded-xl py-2 disabled:opacity-50"
             disabled={isCreating}
           >
             <Plus size={14} />
-            Create Custom Character
+            Create Custom
+          </button>
+          <button
+            onClick={() => setShowAIBuilder(true)}
+            className="btn-primary flex items-center gap-2 flex-1 justify-center text-sm rounded-xl py-2"
+            title="Use a model to draft a character for you"
+          >
+            <Sparkles size={14} />
+            AI Build
           </button>
         </div>
       </div>
+
+      {showAIBuilder && (
+        <AICharacterBuilder
+          onClose={() => setShowAIBuilder(false)}
+          onAccept={(draft) => {
+            setAiDraft(draft)
+            setIsCreating(true)
+            setEditId(null)
+            setShowAIBuilder(false)
+          }}
+        />
+      )}
+
+      {punchUpTarget && (
+        <AICharacterBuilder
+          mode={{ kind: 'rewrite', existing: punchUpTarget }}
+          onClose={() => setPunchUpId(null)}
+          onAccept={(draft) => {
+            updateCharacter(punchUpTarget.id, draft)
+            setPunchUpId(null)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Eye, EyeOff, Check, AlertCircle, Loader } from 'lucide-react'
+import { X, Eye, EyeOff, Check, AlertCircle, Loader, KeyRound } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
 import { fetchModels } from '../../api/openrouter'
 import { THEME_SWATCHES } from '../../types'
@@ -12,34 +12,111 @@ interface SettingsModalProps {
 
 type TestStatus = 'idle' | 'loading' | 'ok' | 'error'
 
-export function SettingsModal({ onClose }: SettingsModalProps) {
-  const apiKey = useSettingsStore((s) => s.apiKey)
-  const theme = useSettingsStore((s) => s.theme)
-  const setApiKey = useSettingsStore((s) => s.setApiKey)
-  const setTheme = useSettingsStore((s) => s.setTheme)
+interface ApiKeyFieldProps {
+  label: string
+  helper: React.ReactNode
+  value: string
+  onSave: (key: string) => void
+  placeholder?: string
+}
 
-  const [keyDraft, setKeyDraft] = useState(apiKey)
-  const [showKey, setShowKey] = useState(false)
-  const [testStatus, setTestStatus] = useState<TestStatus>('idle')
-  const [testMessage, setTestMessage] = useState('')
+function ApiKeyField({ label, helper, value, onSave, placeholder }: ApiKeyFieldProps) {
+  const [draft, setDraft] = useState(value)
+  const [show, setShow] = useState(false)
+  const [status, setStatus] = useState<TestStatus>('idle')
+  const [message, setMessage] = useState('')
 
   async function handleTest() {
-    if (!keyDraft.trim()) { setTestMessage('Enter an API key first.'); setTestStatus('error'); return }
-    setTestStatus('loading')
-    setTestMessage('')
+    if (!draft.trim()) {
+      setMessage('Enter a key first.')
+      setStatus('error')
+      return
+    }
+    setStatus('loading')
+    setMessage('')
     try {
-      const models = await fetchModels(keyDraft.trim())
-      setTestStatus('ok')
-      setTestMessage(`Connected! ${models.length} models available.`)
+      const models = await fetchModels(draft.trim())
+      setStatus('ok')
+      setMessage(`Connected! ${models.length} models available.`)
     } catch (e) {
-      setTestStatus('error')
-      setTestMessage((e as Error).message)
+      setStatus('error')
+      setMessage((e as Error).message)
     }
   }
 
-  function handleSaveKey() {
-    setApiKey(keyDraft.trim())
+  function handleSave() {
+    onSave(draft.trim())
   }
+
+  return (
+    <section>
+      <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+        <KeyRound size={13} />
+        {label}
+      </h3>
+      <div className="flex gap-2 mb-2">
+        <div
+          className="flex items-center flex-1 rounded-lg border border-subtle overflow-hidden"
+          style={{ background: 'var(--bg-tertiary)' }}
+        >
+          <input
+            type={show ? 'text' : 'password'}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder ?? 'sk-or-v1-…'}
+            className="flex-1 bg-transparent outline-none px-3 py-2 text-sm font-mono"
+            style={{ color: 'var(--text-primary)' }}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          />
+          <button
+            onClick={() => setShow((v) => !v)}
+            className="px-2 py-2 btn-ghost"
+            title={show ? 'Hide key' : 'Show key'}
+          >
+            {show ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        </div>
+        <button onClick={handleSave} className="btn-primary text-sm px-3">
+          Save
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleTest}
+          disabled={status === 'loading'}
+          className="flex items-center gap-1.5 text-xs btn-ghost border border-subtle px-3 py-1.5 rounded-lg"
+        >
+          {status === 'loading' ? (
+            <Loader size={12} className="animate-spin" />
+          ) : (
+            <span>Test Connection</span>
+          )}
+        </button>
+        {status === 'ok' && (
+          <span className="flex items-center gap-1 text-xs" style={{ color: '#22c55e' }}>
+            <Check size={12} /> {message}
+          </span>
+        )}
+        {status === 'error' && (
+          <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--danger)' }}>
+            <AlertCircle size={12} /> {message}
+          </span>
+        )}
+      </div>
+
+      <div className="text-xs text-muted mt-2">{helper}</div>
+    </section>
+  )
+}
+
+export function SettingsModal({ onClose }: SettingsModalProps) {
+  const apiKey = useSettingsStore((s) => s.apiKey)
+  const builderApiKey = useSettingsStore((s) => s.builderApiKey)
+  const theme = useSettingsStore((s) => s.theme)
+  const setApiKey = useSettingsStore((s) => s.setApiKey)
+  const setBuilderApiKey = useSettingsStore((s) => s.setBuilderApiKey)
+  const setTheme = useSettingsStore((s) => s.setTheme)
 
   return (
     <div
@@ -48,77 +125,41 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full max-w-md rounded-2xl shadow-2xl fade-in overflow-hidden"
+        className="w-full max-w-md rounded-2xl shadow-2xl fade-in overflow-hidden max-h-[90vh] flex flex-col"
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-subtle">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-subtle shrink-0">
           <h2 className="font-bold text-base">⚙️ Settings</h2>
           <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg">
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-6">
-          {/* API Key section */}
-          <section>
-            <h3 className="font-semibold text-sm mb-3">OpenRouter API Key</h3>
-            <div className="flex gap-2 mb-2">
-              <div
-                className="flex items-center flex-1 rounded-lg border border-subtle overflow-hidden"
-                style={{ background: 'var(--bg-tertiary)' }}
-              >
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={keyDraft}
-                  onChange={(e) => setKeyDraft(e.target.value)}
-                  placeholder="sk-or-v1-…"
-                  className="flex-1 bg-transparent outline-none px-3 py-2 text-sm font-mono"
-                  style={{ color: 'var(--text-primary)' }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
-                />
-                <button
-                  onClick={() => setShowKey((v) => !v)}
-                  className="px-2 py-2 btn-ghost"
-                  title={showKey ? 'Hide key' : 'Show key'}
-                >
-                  {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-              <button onClick={handleSaveKey} className="btn-primary text-sm px-3">
-                Save
-              </button>
-            </div>
+        <div className="p-5 flex flex-col gap-6 overflow-y-auto">
+          <ApiKeyField
+            label="OpenRouter API Key"
+            value={apiKey}
+            onSave={setApiKey}
+            helper={
+              <>
+                Get your key at <span className="accent-text">openrouter.ai/keys</span>.
+                Stored locally in your browser only.
+              </>
+            }
+          />
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleTest}
-                disabled={testStatus === 'loading'}
-                className="flex items-center gap-1.5 text-xs btn-ghost border border-subtle px-3 py-1.5 rounded-lg"
-              >
-                {testStatus === 'loading' ? (
-                  <Loader size={12} className="animate-spin" />
-                ) : (
-                  <span>Test Connection</span>
-                )}
-              </button>
-              {testStatus === 'ok' && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: '#22c55e' }}>
-                  <Check size={12} /> {testMessage}
-                </span>
-              )}
-              {testStatus === 'error' && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--danger)' }}>
-                  <AlertCircle size={12} /> {testMessage}
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-muted mt-2">
-              Get your key at{' '}
-              <span className="accent-text">openrouter.ai/keys</span>. Stored locally in your browser only.
-            </p>
-          </section>
+          <ApiKeyField
+            label="Builder API Key (optional)"
+            value={builderApiKey}
+            onSave={setBuilderApiKey}
+            helper={
+              <>
+                If set, AI Character Builder and Punch Up use this key.
+                Leave blank to fall back to your main key.
+              </>
+            }
+          />
 
           {/* Theme section */}
           <section>

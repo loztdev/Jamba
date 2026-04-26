@@ -11,6 +11,8 @@ import clsx from 'clsx'
 
 const CATEGORIES: { key: ModelCategory; label: string }[] = [
   { key: 'all', label: 'All' },
+  { key: 'favorites', label: '⭐ Favorites' },
+  { key: 'recent', label: '🕒 Recent' },
   { key: 'coding', label: '💻 Coding' },
   { key: 'writing', label: '✍️ Writing' },
   { key: 'roleplay', label: '🎭 Roleplay' },
@@ -34,9 +36,15 @@ interface ModelPickerProps {
   onClose: () => void
   /** If provided, selecting a model updates the chat rather than the default */
   chatId?: string | null
+  /** Override what happens on selection — used by AI character builder etc. */
+  onSelectModel?: (modelId: string) => void
+  /** Override the highlighted/current model id when onSelectModel is used */
+  currentModelIdOverride?: string
+  /** Optional title override */
+  title?: string
 }
 
-export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
+export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOverride, title }: ModelPickerProps) {
   const models = useModelStore((s) => s.models)
   const isLoading = useModelStore((s) => s.isLoading)
   const error = useModelStore((s) => s.error)
@@ -55,12 +63,15 @@ export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
   const apiKey = useSettingsStore((s) => s.apiKey)
   const setDefaultModelId = useSettingsStore((s) => s.setDefaultModelId)
   const defaultModelId = useSettingsStore((s) => s.defaultModelId)
+  const favoriteModelIds = useSettingsStore((s) => s.favoriteModelIds)
+  const recentModelIds = useSettingsStore((s) => s.recentModelIds)
 
   const updateChat = useChatStore((s) => s.updateChat)
   const chats = useChatStore((s) => s.chats)
-  const currentModelId = chatId
-    ? (chats.find((c) => c.id === chatId)?.modelId ?? defaultModelId)
-    : defaultModelId
+  const currentModelId = currentModelIdOverride
+    ?? (chatId
+      ? (chats.find((c) => c.id === chatId)?.modelId ?? defaultModelId)
+      : defaultModelId)
 
   const searchRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -94,7 +105,9 @@ export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
   }
 
   function handleSelect(modelId: string) {
-    if (chatId) {
+    if (onSelectModel) {
+      onSelectModel(modelId)
+    } else if (chatId) {
       updateChat(chatId, { modelId })
     } else {
       setDefaultModelId(modelId)
@@ -102,7 +115,13 @@ export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
     onClose()
   }
 
-  const filtered = filterAndSortModels(models, { searchQuery, sortKey, category })
+  const filtered = filterAndSortModels(models, {
+    searchQuery,
+    sortKey,
+    category,
+    favoriteIds: favoriteModelIds,
+    recentIds: recentModelIds,
+  })
 
   return (
     <div
@@ -116,7 +135,7 @@ export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-subtle shrink-0">
-          <h2 className="font-bold text-base">Select Model</h2>
+          <h2 className="font-bold text-base">{title ?? 'Select Model'}</h2>
           <div className="flex items-center gap-2">
             <button onClick={loadModels} className="btn-ghost p-1.5 rounded-lg" title="Refresh models">
               <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
@@ -187,7 +206,13 @@ export function ModelPicker({ onClose, chatId }: ModelPickerProps) {
             </div>
           )}
           {!isLoading && !error && filtered.length === 0 && (
-            <p className="text-center text-muted text-sm py-12">No models match your search.</p>
+            <p className="text-center text-muted text-sm py-12">
+              {category === 'favorites'
+                ? 'No favorites yet — tap the ⭐ on any model to pin it here.'
+                : category === 'recent'
+                  ? 'No recent models yet — start chatting and they’ll show up here.'
+                  : 'No models match your search.'}
+            </p>
           )}
           {!isLoading && !error && filtered.length > 0 && (
             <div className="grid gap-2 sm:grid-cols-2">

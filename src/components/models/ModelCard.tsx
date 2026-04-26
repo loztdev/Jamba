@@ -1,6 +1,7 @@
-import { Check } from 'lucide-react'
+import { Check, Star } from 'lucide-react'
 import clsx from 'clsx'
 import { formatContextLength, formatPrice } from '../../utils/modelFilters'
+import { useSettingsStore } from '../../store/settingsStore'
 import type { Model } from '../../types'
 
 interface ModelCardProps {
@@ -13,6 +14,10 @@ export function ModelCard({ model, selected, onSelect }: ModelCardProps) {
   const provider = model.id.split('/')[0] ?? ''
   const modelName = model.id.split('/').slice(1).join('/') || model.id
   const isFree = parseFloat(model.pricing.prompt) === 0
+
+  const favoriteIds = useSettingsStore((s) => s.favoriteModelIds)
+  const toggleFavorite = useSettingsStore((s) => s.toggleFavoriteModel)
+  const isFavorite = favoriteIds.includes(model.id)
 
   return (
     <button
@@ -45,14 +50,29 @@ export function ModelCard({ model, selected, onSelect }: ModelCardProps) {
             <span className="text-xs font-mono text-muted truncate">{modelName}</span>
           </div>
         </div>
-        {selected && (
+        <div className="flex items-center gap-1 shrink-0 mt-0.5">
           <span
-            className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-            style={{ background: 'var(--accent)' }}
+            role="button"
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFavorite(model.id)
+            }}
+            className="p-1 rounded-md transition-transform hover:scale-110 cursor-pointer"
+            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            style={{ color: isFavorite ? '#fbbf24' : 'var(--text-secondary)' }}
           >
-            <Check size={11} color="white" />
+            <Star size={14} fill={isFavorite ? '#fbbf24' : 'none'} />
           </span>
-        )}
+          {selected && (
+            <span
+              className="w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ background: 'var(--accent)' }}
+            >
+              <Check size={11} color="white" />
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mt-2 text-xs text-muted">

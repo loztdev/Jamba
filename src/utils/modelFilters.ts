@@ -1,10 +1,19 @@
 import type { Model, ModelCategory, ModelSortKey } from '../types'
 
 const CODING_KW = ['code', 'coder', 'codex', 'starcoder', 'deepseek-coder', 'wizard-code', 'coding', 'deepseekcoder', 'codellama', 'code-llama', 'qwen-coder', 'qwencoder', 'devstral']
-const WRITING_KW = ['creative', 'story', 'novelist', 'mythomax', 'claude', 'gpt-4', 'writing', 'writer', 'llama-3.3', 'gemini']
-const ROLEPLAY_KW = ['rp', 'roleplay', 'mytho', 'nous', 'pygmalion', 'stheno', 'hermes', 'noromaid', 'airoboros', 'dolphin']
+const WRITING_KW = ['creative', 'story', 'novelist', 'mythomax', 'claude', 'gpt-4', 'writing', 'writer', 'llama-3.3', 'gemini', 'unslop', 'rocinante']
+const ROLEPLAY_KW = ['rp', 'roleplay', 'mytho', 'nous', 'pygmalion', 'stheno', 'hermes', 'noromaid', 'airoboros', 'dolphin', 'magnum', 'lumimaid', 'euryale', 'hanami', 'mythalion', 'nothingiisreal']
 const REASONING_KW = ['o1', 'thinking', 'reason', 'qwq', 'r1', 'deepseek-r1', 'reasoning', 'reflection']
-const UNCENSORED_KW = ['uncensored', 'nsfw', 'adult', 'abliterated']
+const UNCENSORED_KW = [
+  'uncensored', 'nsfw', 'adult', 'abliterated',
+  'venice', 'dolphin-mistral', 'dolphin-2', 'dolphin-3',
+  'lumimaid', 'euryale', 'hanami', 'stheno',
+  'magnum', 'rocinante', 'unslop', 'unslopnemo',
+  'cydonia', 'valkyrie', 'skyfall', 'behemoth',
+  'mlewd', 'mythomax', 'mythalion', 'noromaid', 'pygmalion',
+  'thedrummer', 'sao10k', 'anthracite', 'neversleep', 'nothingiisreal',
+  'cognitivecomputations', 'wizardlm-uncensored',
+]
 
 export function detectCategory(model: Model): ModelCategory {
   const haystack = (model.id + ' ' + model.name).toLowerCase()
@@ -40,19 +49,37 @@ export interface FilterOptions {
   searchQuery: string
   sortKey: ModelSortKey
   category: ModelCategory
+  favoriteIds?: string[]
+  recentIds?: string[]
 }
 
 export function filterAndSortModels(models: Model[], opts: FilterOptions): Model[] {
-  const { searchQuery, sortKey, category } = opts
+  const { searchQuery, sortKey, category, favoriteIds, recentIds } = opts
   const q = searchQuery.toLowerCase().trim()
+  const favSet = new Set(favoriteIds ?? [])
+  const recentList = recentIds ?? []
+  const recentIndex = new Map(recentList.map((id, i) => [id, i] as const))
 
   let filtered = models.filter((m) => {
     if (q && !m.id.toLowerCase().includes(q) && !m.name.toLowerCase().includes(q)) {
       return false
     }
-    if (category !== 'all' && detectCategory(m) !== category) return false
+    if (category === 'favorites') {
+      if (!favSet.has(m.id)) return false
+    } else if (category === 'recent') {
+      if (!recentIndex.has(m.id)) return false
+    } else if (category !== 'all') {
+      if (detectCategory(m) !== category) return false
+    }
     return true
   })
+
+  // Recent tab preserves usage order regardless of selected sortKey
+  if (category === 'recent') {
+    return [...filtered].sort(
+      (a, b) => (recentIndex.get(a.id) ?? 0) - (recentIndex.get(b.id) ?? 0)
+    )
+  }
 
   filtered = [...filtered].sort((a, b) => {
     switch (sortKey) {
