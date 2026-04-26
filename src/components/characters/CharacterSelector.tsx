@@ -121,6 +121,8 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [aiDraft, setAiDraft] = useState<Partial<Character> | null>(null)
   const [showAIBuilder, setShowAIBuilder] = useState(false)
+  const [punchUpId, setPunchUpId] = useState<string | null>(null)
+  const punchUpTarget = punchUpId ? characters.find((c) => c.id === punchUpId) ?? null : null
 
   function selectCharacter(charId: string | null) {
     if (!activeChatId) { onClose(); return }
@@ -255,6 +257,14 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
                 {!char.isBuiltIn && (
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
+                      onClick={(e) => { e.stopPropagation(); setPunchUpId(char.id) }}
+                      className="p-1 rounded-md"
+                      style={{ background: 'var(--bg-secondary)', color: 'var(--accent)' }}
+                      title="AI Punch Up"
+                    >
+                      <Sparkles size={11} />
+                    </button>
+                    <button
                       onClick={(e) => { e.stopPropagation(); setEditId(char.id) }}
                       className="p-1 rounded-md"
                       style={{ background: 'var(--bg-secondary)' }}
@@ -306,6 +316,17 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
             setIsCreating(true)
             setEditId(null)
             setShowAIBuilder(false)
+          }}
+        />
+      )}
+
+      {punchUpTarget && (
+        <AICharacterBuilder
+          mode={{ kind: 'rewrite', existing: punchUpTarget }}
+          onClose={() => setPunchUpId(null)}
+          onAccept={(draft) => {
+            updateCharacter(punchUpTarget.id, draft)
+            setPunchUpId(null)
           }}
         />
       )}

@@ -12,6 +12,7 @@ export function useStreamingChat() {
   const finalizeMessage = useChatStore((s) => s.finalizeMessage)
   const chats = useChatStore((s) => s.chats)
   const apiKey = useSettingsStore((s) => s.apiKey)
+  const pushRecentModel = useSettingsStore((s) => s.pushRecentModel)
 
   function cancelStream() {
     cancelRef.current?.()
@@ -22,6 +23,8 @@ export function useStreamingChat() {
   function sendMessage(chatId: string, userContent: string) {
     const chat = chats.find((c) => c.id === chatId)
     if (!chat) return
+
+    pushRecentModel(chat.modelId)
 
     // Cancel any in-progress stream
     cancelRef.current?.()

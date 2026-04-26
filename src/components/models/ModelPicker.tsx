@@ -12,6 +12,7 @@ import clsx from 'clsx'
 const CATEGORIES: { key: ModelCategory; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'favorites', label: '⭐ Favorites' },
+  { key: 'recent', label: '🕒 Recent' },
   { key: 'coding', label: '💻 Coding' },
   { key: 'writing', label: '✍️ Writing' },
   { key: 'roleplay', label: '🎭 Roleplay' },
@@ -63,6 +64,7 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
   const setDefaultModelId = useSettingsStore((s) => s.setDefaultModelId)
   const defaultModelId = useSettingsStore((s) => s.defaultModelId)
   const favoriteModelIds = useSettingsStore((s) => s.favoriteModelIds)
+  const recentModelIds = useSettingsStore((s) => s.recentModelIds)
 
   const updateChat = useChatStore((s) => s.updateChat)
   const chats = useChatStore((s) => s.chats)
@@ -118,6 +120,7 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
     sortKey,
     category,
     favoriteIds: favoriteModelIds,
+    recentIds: recentModelIds,
   })
 
   return (
@@ -206,7 +209,9 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
             <p className="text-center text-muted text-sm py-12">
               {category === 'favorites'
                 ? 'No favorites yet — tap the ⭐ on any model to pin it here.'
-                : 'No models match your search.'}
+                : category === 'recent'
+                  ? 'No recent models yet — start chatting and they’ll show up here.'
+                  : 'No models match your search.'}
             </p>
           )}
           {!isLoading && !error && filtered.length > 0 && (

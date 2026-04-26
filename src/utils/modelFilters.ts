@@ -50,12 +50,15 @@ export interface FilterOptions {
   sortKey: ModelSortKey
   category: ModelCategory
   favoriteIds?: string[]
+  recentIds?: string[]
 }
 
 export function filterAndSortModels(models: Model[], opts: FilterOptions): Model[] {
-  const { searchQuery, sortKey, category, favoriteIds } = opts
+  const { searchQuery, sortKey, category, favoriteIds, recentIds } = opts
   const q = searchQuery.toLowerCase().trim()
   const favSet = new Set(favoriteIds ?? [])
+  const recentList = recentIds ?? []
+  const recentIndex = new Map(recentList.map((id, i) => [id, i] as const))
 
   let filtered = models.filter((m) => {
     if (q && !m.id.toLowerCase().includes(q) && !m.name.toLowerCase().includes(q)) {
@@ -63,11 +66,20 @@ export function filterAndSortModels(models: Model[], opts: FilterOptions): Model
     }
     if (category === 'favorites') {
       if (!favSet.has(m.id)) return false
+    } else if (category === 'recent') {
+      if (!recentIndex.has(m.id)) return false
     } else if (category !== 'all') {
       if (detectCategory(m) !== category) return false
     }
     return true
   })
+
+  // Recent tab preserves usage order regardless of selected sortKey
+  if (category === 'recent') {
+    return [...filtered].sort(
+      (a, b) => (recentIndex.get(a.id) ?? 0) - (recentIndex.get(b.id) ?? 0)
+    )
+  }
 
   filtered = [...filtered].sort((a, b) => {
     switch (sortKey) {
