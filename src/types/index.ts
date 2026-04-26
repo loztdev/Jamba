@@ -52,6 +52,7 @@ export interface Prompt {
 
 export type ModelCategory =
   | 'all'
+  | 'favorites'
   | 'coding'
   | 'writing'
   | 'roleplay'

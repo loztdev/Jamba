@@ -23,6 +23,42 @@ export async function fetchModels(apiKey: string): Promise<Model[]> {
   return (data.data as Model[]) ?? []
 }
 
+export interface CompleteChatOptions {
+  apiKey: string
+  modelId: string
+  messages: Pick<Message, 'role' | 'content'>[]
+  systemPrompt?: string
+  signal?: AbortSignal
+  temperature?: number
+}
+
+export async function completeChat(opts: CompleteChatOptions): Promise<string> {
+  const { apiKey, modelId, messages, systemPrompt, signal, temperature } = opts
+  const res = await fetch(`${BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: headers(apiKey),
+    signal,
+    body: JSON.stringify({
+      model: modelId,
+      stream: false,
+      ...(temperature !== undefined ? { temperature } : {}),
+      messages: systemPrompt
+        ? [{ role: 'system', content: systemPrompt }, ...messages]
+        : [...messages],
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`HTTP ${res.status}: ${text}`)
+  }
+  const data = await res.json()
+  const content = data?.choices?.[0]?.message?.content
+  if (typeof content !== 'string') {
+    throw new Error('No content returned from model.')
+  }
+  return content
+}
+
 export type StreamChatOptions = {
   apiKey: string
   modelId: string
