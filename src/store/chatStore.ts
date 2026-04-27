@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Chat, Message, Character, Prompt } from '../types'
+import type { Chat, Message, Character, Prompt, TokenUsage } from '../types'
 import { BUILT_IN_PROMPTS } from '../data/builtInPrompts'
 import { BUILT_IN_CHARACTERS } from '../data/builtInCharacters'
 
@@ -22,6 +22,8 @@ interface ChatState {
   addMessage: (chatId: string, message: Omit<Message, 'id' | 'createdAt'>) => Message
   updateMessage: (chatId: string, messageId: string, content: string) => void
   finalizeMessage: (chatId: string, messageId: string) => void
+  setMessageUsage: (chatId: string, messageId: string, usage: TokenUsage) => void
+  forkChat: (sourceChatId: string, upToMessageId: string) => string
   exportChats: () => void
 
   // Prompt actions
@@ -90,7 +92,9 @@ export const useChatStore = create<ChatState>()(
             const messages = [...c.messages, message]
             const title =
               c.title === 'New Chat' && msg.role === 'user'
-                ? msg.content.slice(0, 52).trim()
+                ? typeof msg.content === 'string'
+                  ? msg.content.slice(0, 52).trim()
+                  : '[Attached file]'
                 : c.title
             return { ...c, messages, title, updatedAt: Date.now() }
           }),
@@ -125,6 +129,41 @@ export const useChatStore = create<ChatState>()(
             }
           }),
         }))
+      },
+
+      setMessageUsage: (chatId, messageId, usage) => {
+        set((s) => ({
+          chats: s.chats.map((c) => {
+            if (c.id !== chatId) return c
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === messageId ? { ...m, tokenUsage: usage } : m
+              ),
+            }
+          }),
+        }))
+      },
+
+      forkChat: (sourceChatId, upToMessageId) => {
+        const { chats } = get()
+        const source = chats.find((c) => c.id === sourceChatId)
+        if (!source) return ''
+        const cutIndex = source.messages.findIndex((m) => m.id === upToMessageId)
+        if (cutIndex === -1) return ''
+        const id = nanoid()
+        const fork: Chat = {
+          id,
+          title: `Fork of ${source.title}`,
+          modelId: source.modelId,
+          characterId: source.characterId,
+          systemPrompt: source.systemPrompt,
+          messages: source.messages.slice(0, cutIndex + 1),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+        set((s) => ({ chats: [fork, ...s.chats], activeChatId: id }))
+        return id
       },
 
       exportChats: () => {

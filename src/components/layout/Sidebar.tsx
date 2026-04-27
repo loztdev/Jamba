@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MessageSquare, Plus, Trash2, Download, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { MessageSquare, Plus, Trash2, Download, Settings, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import { useSettingsStore } from '../../store/settingsStore'
 import clsx from 'clsx'
@@ -8,9 +8,10 @@ interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
   onOpenSettings: () => void
+  onOpenSearch: () => void
 }
 
-export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenSearch }: SidebarProps) {
   const chats = useChatStore((s) => s.chats)
   const activeChatId = useChatStore((s) => s.activeChatId)
   const createChat = useChatStore((s) => s.createChat)
@@ -126,6 +127,17 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
 
       {/* Footer actions */}
       <div className="border-t border-subtle p-2 shrink-0 flex flex-col gap-1">
+        <button
+          onClick={onOpenSearch}
+          className={clsx(
+            'btn-ghost flex items-center gap-2 w-full text-sm',
+            collapsed ? 'justify-center' : ''
+          )}
+          title="Search chats"
+        >
+          <Search size={15} />
+          {!collapsed && <span>Search</span>}
+        </button>
         <button
           onClick={exportChats}
           className={clsx(

@@ -15,6 +15,13 @@ const UNCENSORED_KW = [
   'cognitivecomputations', 'wizardlm-uncensored',
 ]
 
+const VISION_KW = ['vision', 'gpt-4o', 'gpt-4-turbo', 'claude-3', 'gemini', 'pixtral', 'llava', 'qwen-vl', 'qvq', 'mistral-medium', 'mistral-large', 'mistral-small']
+
+export function supportsVision(modelId: string): boolean {
+  const lower = modelId.toLowerCase()
+  return VISION_KW.some((k) => lower.includes(k))
+}
+
 export function detectCategory(model: Model): ModelCategory {
   const haystack = (model.id + ' ' + model.name).toLowerCase()
   if (UNCENSORED_KW.some((k) => haystack.includes(k))) return 'uncensored'

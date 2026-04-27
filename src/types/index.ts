@@ -13,12 +13,40 @@ export interface Model {
   description?: string
 }
 
+export interface TextContentPart {
+  type: 'text'
+  text: string
+}
+
+export interface ImageContentPart {
+  type: 'image_url'
+  image_url: { url: string }
+}
+
+export type ContentPart = TextContentPart | ImageContentPart
+
+export interface Attachment {
+  id: string
+  name: string
+  type: 'image' | 'text' | 'pdf'
+  mimeType: string
+  content: string
+}
+
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content: string | ContentPart[]
   createdAt: number
   isStreaming?: boolean
+  attachments?: Attachment[]
+  tokenUsage?: TokenUsage
 }
 
 export interface Chat {

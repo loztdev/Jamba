@@ -3,12 +3,21 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, GitFork, FileText } from 'lucide-react'
 import clsx from 'clsx'
-import type { Message as MessageType } from '../../types'
+import type { Message as MessageType, TextContentPart } from '../../types'
 
 interface MessageProps {
   message: MessageType
+  onFork?: (messageId: string) => void
+}
+
+function extractText(message: MessageType): string {
+  if (typeof message.content === 'string') return message.content
+  return message.content
+    .filter((p): p is TextContentPart => p.type === 'text')
+    .map((p) => p.text)
+    .join('')
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -29,8 +38,9 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-export function Message({ message }: MessageProps) {
+export function Message({ message, onFork }: MessageProps) {
   const isUser = message.role === 'user'
+  const textContent = extractText(message)
 
   return (
     <div
@@ -66,7 +76,28 @@ export function Message({ message }: MessageProps) {
           }}
         >
           {isUser ? (
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <div>
+              {/* Image attachments */}
+              {message.attachments?.filter((a) => a.type === 'image').map((a) => (
+                <img
+                  key={a.id}
+                  src={a.content}
+                  alt={a.name}
+                  className="max-w-xs max-h-48 rounded-lg mb-2 object-cover"
+                />
+              ))}
+              {/* File attachments */}
+              {message.attachments?.filter((a) => a.type !== 'image').map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-1.5 text-xs mb-1 opacity-75"
+                >
+                  <FileText size={11} />
+                  <span>{a.name}</span>
+                </div>
+              ))}
+              <p className="whitespace-pre-wrap break-words">{textContent}</p>
+            </div>
           ) : (
             <div
               className={clsx(
@@ -168,7 +199,7 @@ export function Message({ message }: MessageProps) {
                   },
                 }}
               >
-                {message.content}
+                {textContent}
               </ReactMarkdown>
               {message.isStreaming && message.content && (
                 <span className="streaming-cursor" />
@@ -176,8 +207,25 @@ export function Message({ message }: MessageProps) {
             </div>
           )}
         </div>
-        <div className={clsx('flex gap-1', isUser ? 'flex-row-reverse' : 'flex-row')}>
-          <CopyButton text={message.content} />
+        <div className={clsx('flex items-center gap-1', isUser ? 'flex-row-reverse' : 'flex-row')}>
+          <CopyButton text={textContent} />
+          {onFork && (
+            <button
+              onClick={() => onFork(message.id)}
+              className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity btn-ghost"
+              title="Fork conversation from here"
+            >
+              <GitFork size={13} />
+            </button>
+          )}
+          {!isUser && message.tokenUsage && !message.isStreaming && (
+            <span
+              className="text-xs opacity-40 ml-1"
+              title={`${message.tokenUsage.promptTokens} prompt + ${message.tokenUsage.completionTokens} completion`}
+            >
+              {message.tokenUsage.totalTokens} tokens
+            </span>
+          )}
         </div>
       </div>
     </div>

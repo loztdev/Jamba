@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { BookOpen, Users, Sparkles } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import { useStreamingChat } from '../../hooks/useStreamingChat'
+import { supportsVision } from '../../utils/modelFilters'
 import { Message } from './Message'
 import { ChatInput } from './ChatInput'
-import type { Character } from '../../types'
+import type { Character, Attachment } from '../../types'
 
 interface ChatViewProps {
   onOpenModelPicker: () => void
@@ -36,6 +37,7 @@ export function ChatView({
     return 'openai/gpt-4o-mini'
   })
 
+  const forkChat = useChatStore((s) => s.forkChat)
   const { sendMessage, isStreaming, cancelStream } = useStreamingChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -60,7 +62,7 @@ export function ChatView({
     }
   }, [activeChat?.messages.length, activeChat?.messages[activeChat.messages.length - 1]?.content, isAtBottom])
 
-  function handleSend(content: string) {
+  function handleSend(content: string, attachments: Attachment[]) {
     const apiKey = (() => {
       const stored = localStorage.getItem('jamba-settings')
       if (stored) {
@@ -82,7 +84,12 @@ export function ChatView({
     if (!chatId) {
       chatId = createChat(defaultModelId)
     }
-    sendMessage(chatId, content)
+    sendMessage(chatId, content, attachments)
+  }
+
+  function handleFork(messageId: string) {
+    if (!activeChatId) return
+    forkChat(activeChatId, messageId)
   }
 
   // Empty state — no active chat
@@ -174,7 +181,7 @@ export function ChatView({
         {activeChat.messages
           .filter((m) => m.role !== 'system')
           .map((msg) => (
-            <Message key={msg.id} message={msg} />
+            <Message key={msg.id} message={msg} onFork={handleFork} />
           ))}
         <div ref={bottomRef} />
       </div>
@@ -184,6 +191,7 @@ export function ChatView({
         chat={activeChat}
         character={character}
         isStreaming={isStreaming}
+        supportsVision={supportsVision(activeChat.modelId)}
         onSend={handleSend}
         onCancel={cancelStream}
         onOpenModelPicker={onOpenModelPicker}

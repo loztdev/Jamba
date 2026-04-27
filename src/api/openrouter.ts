@@ -1,4 +1,4 @@
-import type { Model, Message } from '../types'
+import type { Model, Message, ContentPart, TokenUsage } from '../types'
 
 const BASE_URL = 'https://openrouter.ai/api/v1'
 
@@ -32,7 +32,7 @@ export interface CompleteChatOptions {
   temperature?: number
 }
 
-export async function completeChat(opts: CompleteChatOptions): Promise<string> {
+export async function completeChat(opts: CompleteChatOptions): Promise<{ content: string; usage: TokenUsage | null }> {
   const { apiKey, modelId, messages, systemPrompt, signal, temperature } = opts
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
@@ -56,7 +56,11 @@ export async function completeChat(opts: CompleteChatOptions): Promise<string> {
   if (typeof content !== 'string') {
     throw new Error('No content returned from model.')
   }
-  return content
+  const rawUsage = data?.usage
+  const usage: TokenUsage | null = rawUsage
+    ? { promptTokens: rawUsage.prompt_tokens, completionTokens: rawUsage.completion_tokens, totalTokens: rawUsage.total_tokens }
+    : null
+  return { content, usage }
 }
 
 export type StreamChatOptions = {
@@ -67,15 +71,16 @@ export type StreamChatOptions = {
   onDelta: (delta: string) => void
   onDone: () => void
   onError: (err: Error) => void
+  onUsage?: (usage: TokenUsage) => void
 }
 
 export function streamChat(opts: StreamChatOptions): () => void {
-  const { apiKey, modelId, messages, systemPrompt, onDelta, onDone, onError } = opts
+  const { apiKey, modelId, messages, systemPrompt, onDelta, onDone, onError, onUsage } = opts
   const controller = new AbortController()
 
   const payload: {
     model: string
-    messages: { role: string; content: string }[]
+    messages: { role: string; content: string | ContentPart[] }[]
     stream: boolean
   } = {
     model: modelId,
@@ -134,6 +139,13 @@ export function streamChat(opts: StreamChatOptions): () => void {
             const delta = parsed.choices?.[0]?.delta?.content
             if (typeof delta === 'string' && delta) {
               onDelta(delta)
+            }
+            if (parsed.usage && onUsage) {
+              onUsage({
+                promptTokens: parsed.usage.prompt_tokens,
+                completionTokens: parsed.usage.completion_tokens,
+                totalTokens: parsed.usage.total_tokens,
+              })
             }
           } catch {
             // malformed chunk — skip
