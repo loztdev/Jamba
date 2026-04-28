@@ -4,9 +4,10 @@ import { Sidebar } from './Sidebar'
 interface AppLayoutProps {
   children: React.ReactNode
   onOpenSettings: () => void
+  onOpenBookmarks: () => void
 }
 
-export function AppLayout({ children, onOpenSettings }: AppLayoutProps) {
+export function AppLayout({ children, onOpenSettings, onOpenBookmarks }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
@@ -15,6 +16,7 @@ export function AppLayout({ children, onOpenSettings }: AppLayoutProps) {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((v) => !v)}
         onOpenSettings={onOpenSettings}
+        onOpenBookmarks={onOpenBookmarks}
       />
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {children}

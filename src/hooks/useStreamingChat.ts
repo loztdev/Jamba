@@ -10,6 +10,7 @@ export function useStreamingChat() {
   const addMessage = useChatStore((s) => s.addMessage)
   const updateMessage = useChatStore((s) => s.updateMessage)
   const finalizeMessage = useChatStore((s) => s.finalizeMessage)
+  const truncateMessagesAfter = useChatStore((s) => s.truncateMessagesAfter)
   const chats = useChatStore((s) => s.chats)
   const apiKey = useSettingsStore((s) => s.apiKey)
   const pushRecentModel = useSettingsStore((s) => s.pushRecentModel)
@@ -20,19 +21,12 @@ export function useStreamingChat() {
     setIsStreaming(false)
   }
 
-  function sendMessage(chatId: string, userContent: string) {
-    const chat = chats.find((c) => c.id === chatId)
-    if (!chat) return
-
-    pushRecentModel(chat.modelId)
-
-    // Cancel any in-progress stream
-    cancelRef.current?.()
-
-    // Add user message
-    addMessage(chatId, { role: 'user', content: userContent })
-
-    // Add placeholder assistant message
+  function _stream(
+    chatId: string,
+    historyMessages: Pick<Message, 'role' | 'content' | 'imageUrl'>[],
+    modelId: string,
+    systemPrompt: string | undefined
+  ) {
     const assistantMsg: Message = addMessage(chatId, {
       role: 'assistant',
       content: '',
@@ -41,25 +35,19 @@ export function useStreamingChat() {
 
     setIsStreaming(true)
 
-    // Build the messages array from chat history (excluding the new empty assistant msg)
-    const historyMessages = [
-      ...chat.messages,
-      { id: '', role: 'user' as const, content: userContent, createdAt: Date.now() },
-    ].map(({ role, content }) => ({ role, content }))
-
     let accumulated = ''
 
     const cancel = streamChat({
       apiKey,
-      modelId: chat.modelId,
+      modelId,
       messages: historyMessages,
-      systemPrompt: chat.systemPrompt || undefined,
+      systemPrompt,
       onDelta: (delta) => {
         accumulated += delta
         updateMessage(chatId, assistantMsg.id, accumulated)
       },
-      onDone: () => {
-        finalizeMessage(chatId, assistantMsg.id)
+      onDone: (tokenCount) => {
+        finalizeMessage(chatId, assistantMsg.id, tokenCount)
         setIsStreaming(false)
         cancelRef.current = null
       },
@@ -74,5 +62,79 @@ export function useStreamingChat() {
     cancelRef.current = cancel
   }
 
-  return { sendMessage, isStreaming, cancelStream }
+  function sendMessage(chatId: string, userContent: string, imageUrl?: string) {
+    const chat = chats.find((c) => c.id === chatId)
+    if (!chat) return
+
+    pushRecentModel(chat.modelId)
+    cancelRef.current?.()
+
+    addMessage(chatId, { role: 'user', content: userContent, imageUrl })
+
+    const historyMessages: Pick<Message, 'role' | 'content' | 'imageUrl'>[] = [
+      ...chat.messages.map(({ role, content, imageUrl }) => ({ role, content, imageUrl })),
+      { role: 'user' as const, content: userContent, imageUrl },
+    ]
+
+    _stream(chatId, historyMessages, chat.modelId, chat.systemPrompt || undefined)
+  }
+
+  function regenerate(chatId: string) {
+    const chat = chats.find((c) => c.id === chatId)
+    if (!chat) return
+
+    // Find the last assistant message and remove it
+    const messages = [...chat.messages]
+    let lastAssistantIdx = -1
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        lastAssistantIdx = i
+        break
+      }
+    }
+    if (lastAssistantIdx === -1) return
+
+    const lastAssistantId = messages[lastAssistantIdx].id
+    truncateMessagesAfter(chatId, lastAssistantId)
+
+    // Build history up to (but not including) the removed assistant message
+    const historyMessages = messages
+      .slice(0, lastAssistantIdx)
+      .map(({ role, content, imageUrl }) => ({ role, content, imageUrl }))
+
+    cancelRef.current?.()
+    pushRecentModel(chat.modelId)
+    _stream(chatId, historyMessages, chat.modelId, chat.systemPrompt || undefined)
+  }
+
+  function editAndResend(chatId: string, messageId: string, newContent: string) {
+    const chat = chats.find((c) => c.id === chatId)
+    if (!chat) return
+
+    const idx = chat.messages.findIndex((m) => m.id === messageId)
+    if (idx === -1) return
+
+    // Truncate everything after this message (removes old response)
+    const nextMsg = chat.messages[idx + 1]
+    if (nextMsg) {
+      truncateMessagesAfter(chatId, nextMsg.id)
+    }
+
+    // Update the user message content
+    updateMessage(chatId, messageId, newContent)
+
+    // Build history up to and including this edited message
+    const historyMessages = [
+      ...chat.messages
+        .slice(0, idx)
+        .map(({ role, content, imageUrl }) => ({ role, content, imageUrl })),
+      { role: 'user' as const, content: newContent, imageUrl: chat.messages[idx].imageUrl },
+    ]
+
+    cancelRef.current?.()
+    pushRecentModel(chat.modelId)
+    _stream(chatId, historyMessages, chat.modelId, chat.systemPrompt || undefined)
+  }
+
+  return { sendMessage, regenerate, editAndResend, isStreaming, cancelStream }
 }

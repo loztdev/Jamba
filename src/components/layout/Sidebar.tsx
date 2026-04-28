@@ -1,25 +1,37 @@
-import { useState } from 'react'
-import { MessageSquare, Plus, Trash2, Download, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useRef } from 'react'
+import {
+  MessageSquare, Plus, Trash2, Settings, ChevronLeft, ChevronRight,
+  Download, Upload, Pin, PinOff, Search, Bookmark, ChevronDown,
+} from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import { useSettingsStore } from '../../store/settingsStore'
 import clsx from 'clsx'
+import type { Chat } from '../../types'
 
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
   onOpenSettings: () => void
+  onOpenBookmarks: () => void
 }
 
-export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenBookmarks }: SidebarProps) {
   const chats = useChatStore((s) => s.chats)
   const activeChatId = useChatStore((s) => s.activeChatId)
   const createChat = useChatStore((s) => s.createChat)
   const deleteChat = useChatStore((s) => s.deleteChat)
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
   const exportChats = useChatStore((s) => s.exportChats)
+  const exportChatsMarkdown = useChatStore((s) => s.exportChatsMarkdown)
+  const exportChatsText = useChatStore((s) => s.exportChatsText)
+  const importChats = useChatStore((s) => s.importChats)
+  const togglePinChat = useChatStore((s) => s.togglePinChat)
   const defaultModelId = useSettingsStore((s) => s.defaultModelId)
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleNewChat() {
     createChat(defaultModelId)
@@ -36,7 +48,87 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
     }
   }
 
-  const sorted = [...chats].sort((a, b) => b.updatedAt - a.updatedAt)
+  function handlePinChat(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    togglePinChat(id)
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string)
+        if (Array.isArray(data)) {
+          importChats(data as Chat[])
+        }
+      } catch {
+        // invalid JSON — ignore
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const q = searchQuery.toLowerCase().trim()
+  const filtered = chats.filter((c) => {
+    if (!q) return true
+    if (c.title.toLowerCase().includes(q)) return true
+    return c.messages.some((m) => m.content.toLowerCase().includes(q))
+  })
+
+  const pinned = filtered.filter((c) => c.pinned).sort((a, b) => b.updatedAt - a.updatedAt)
+  const unpinned = filtered.filter((c) => !c.pinned).sort((a, b) => b.updatedAt - a.updatedAt)
+  const sorted = [...pinned, ...unpinned]
+
+  function ChatRow({ chat }: { chat: Chat }) {
+    const isActive = activeChatId === chat.id
+    return (
+      <button
+        key={chat.id}
+        onClick={() => setActiveChatId(chat.id)}
+        className={clsx(
+          'w-full flex items-center gap-2 px-2 py-2 mx-0 rounded-md text-left text-sm group transition-colors relative',
+          isActive ? 'bg-accent text-white' : 'hover:bg-tertiary'
+        )}
+        style={isActive ? { background: 'var(--accent)', color: 'white' } : undefined}
+        title={collapsed ? chat.title : undefined}
+      >
+        {chat.pinned ? (
+          <Pin size={13} className="shrink-0" style={{ color: isActive ? 'white' : 'var(--accent)' }} />
+        ) : (
+          <MessageSquare size={14} className="shrink-0" style={{ color: isActive ? 'white' : 'var(--text-secondary)' }} />
+        )}
+        {!collapsed && (
+          <>
+            <span className="truncate flex-1 min-w-0">{chat.title}</span>
+            <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => handlePinChat(chat.id, e)}
+                className="p-0.5 rounded"
+                style={{ color: chat.pinned ? 'var(--accent)' : undefined }}
+                title={chat.pinned ? 'Unpin' : 'Pin'}
+              >
+                {chat.pinned ? <PinOff size={11} /> : <Pin size={11} />}
+              </button>
+              <button
+                onClick={(e) => handleDeleteChat(chat.id, e)}
+                className={clsx(
+                  'p-0.5 rounded',
+                  deleteConfirmId === chat.id ? 'opacity-100' : ''
+                )}
+                style={{ color: deleteConfirmId === chat.id ? 'var(--danger)' : undefined }}
+                title={deleteConfirmId === chat.id ? 'Click again to confirm' : 'Delete chat'}
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          </>
+        )}
+      </button>
+    )
+  }
 
   return (
     <aside
@@ -49,7 +141,7 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-subtle shrink-0">
         {!collapsed && (
-          <span className="font-bold text-lg tracking-tight accent-text">Jamba</span>
+          <span className="font-bold text-lg tracking-tight accent-text">OpenStarChat</span>
         )}
         <button
           onClick={onToggle}
@@ -60,7 +152,7 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
         </button>
       </div>
 
-      {/* New Chat button */}
+      {/* New Chat */}
       <div className="p-2 shrink-0">
         <button
           onClick={handleNewChat}
@@ -68,81 +160,115 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
             'btn-primary flex items-center gap-2 w-full justify-center text-sm',
             collapsed ? 'p-2' : 'px-3 py-2'
           )}
-          title="New Chat"
+          title="New Chat (Ctrl+N)"
         >
           <Plus size={16} />
           {!collapsed && <span>New Chat</span>}
         </button>
       </div>
 
+      {/* Search */}
+      {!collapsed && (
+        <div className="px-2 pb-1 shrink-0">
+          <div
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-subtle"
+            style={{ background: 'var(--bg-tertiary)' }}
+          >
+            <Search size={13} className="text-muted shrink-0" />
+            <input
+              type="text"
+              placeholder="Search chats…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent outline-none text-xs flex-1 min-w-0"
+              style={{ color: 'var(--text-primary)' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto min-h-0 py-1">
+      <div className="flex-1 overflow-y-auto min-h-0 py-1 px-1">
         {sorted.length === 0 && !collapsed && (
-          <p className="text-center text-muted text-xs px-4 py-8">No chats yet. Start a new one!</p>
+          <p className="text-center text-muted text-xs px-4 py-8">
+            {searchQuery ? 'No matching chats.' : 'No chats yet. Start a new one!'}
+          </p>
         )}
         {sorted.map((chat) => (
-          <button
-            key={chat.id}
-            onClick={() => setActiveChatId(chat.id)}
-            className={clsx(
-              'w-full flex items-center gap-2 px-2 py-2 mx-0 rounded-md text-left text-sm group transition-colors relative',
-              activeChatId === chat.id
-                ? 'bg-accent text-white'
-                : 'hover:bg-tertiary'
-            )}
-            style={
-              activeChatId === chat.id
-                ? { background: 'var(--accent)', color: 'white' }
-                : undefined
-            }
-            title={collapsed ? chat.title : undefined}
-          >
-            <MessageSquare
-              size={14}
-              className="shrink-0"
-              style={activeChatId === chat.id ? { color: 'white' } : { color: 'var(--text-secondary)' }}
-            />
-            {!collapsed && (
-              <>
-                <span className="truncate flex-1 min-w-0">{chat.title}</span>
-                <button
-                  onClick={(e) => handleDeleteChat(chat.id, e)}
-                  className={clsx(
-                    'shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity',
-                    deleteConfirmId === chat.id
-                      ? 'opacity-100 text-red-400'
-                      : 'hover:text-red-400'
-                  )}
-                  style={{ color: deleteConfirmId === chat.id ? 'var(--danger)' : undefined }}
-                  title={deleteConfirmId === chat.id ? 'Click again to confirm' : 'Delete chat'}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </>
-            )}
-          </button>
+          <ChatRow key={chat.id} chat={chat} />
         ))}
       </div>
 
-      {/* Footer actions */}
+      {/* Footer */}
       <div className="border-t border-subtle p-2 shrink-0 flex flex-col gap-1">
+        {/* Bookmarks */}
         <button
-          onClick={exportChats}
-          className={clsx(
-            'btn-ghost flex items-center gap-2 w-full text-sm',
-            collapsed ? 'justify-center' : ''
-          )}
-          title="Export chats as JSON"
+          onClick={onOpenBookmarks}
+          className={clsx('btn-ghost flex items-center gap-2 w-full text-sm', collapsed ? 'justify-center' : '')}
+          title="Bookmarked messages"
         >
-          <Download size={15} />
-          {!collapsed && <span>Export Chats</span>}
+          <Bookmark size={15} />
+          {!collapsed && <span>Bookmarks</span>}
         </button>
+
+        {/* Export with submenu */}
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu((v) => !v)}
+            className={clsx('btn-ghost flex items-center gap-2 w-full text-sm', collapsed ? 'justify-center' : '')}
+            title="Export chats"
+          >
+            <Download size={15} />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Export Chats</span>
+                <ChevronDown size={12} className={clsx('transition-transform', showExportMenu && 'rotate-180')} />
+              </>
+            )}
+          </button>
+          {showExportMenu && !collapsed && (
+            <div
+              className="absolute bottom-full left-0 mb-1 w-full rounded-lg border border-subtle shadow-lg overflow-hidden z-10"
+              style={{ background: 'var(--bg-secondary)' }}
+            >
+              {[
+                { label: 'JSON', fn: exportChats },
+                { label: 'Markdown', fn: exportChatsMarkdown },
+                { label: 'Plain Text', fn: exportChatsText },
+              ].map(({ label, fn }) => (
+                <button
+                  key={label}
+                  onClick={() => { fn(); setShowExportMenu(false) }}
+                  className="w-full text-left px-3 py-2 text-xs btn-ghost rounded-none"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Import */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className={clsx('btn-ghost flex items-center gap-2 w-full text-sm', collapsed ? 'justify-center' : '')}
+          title="Import chats from JSON"
+        >
+          <Upload size={15} />
+          {!collapsed && <span>Import Chats</span>}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={handleImport}
+        />
+
+        {/* Settings */}
         <button
           onClick={onOpenSettings}
-          className={clsx(
-            'btn-ghost flex items-center gap-2 w-full text-sm',
-            collapsed ? 'justify-center' : ''
-          )}
+          className={clsx('btn-ghost flex items-center gap-2 w-full text-sm', collapsed ? 'justify-center' : '')}
           title="Settings"
         >
           <Settings size={15} />
