@@ -1,2 +1,2 @@
-# Jamba
-I'm not sure what to put here yet
+# OpenStarChat
+A wrapper for OpenRouter with a starry idle animation!
