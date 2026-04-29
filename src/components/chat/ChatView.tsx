@@ -23,8 +23,9 @@ export function ChatView({
   const activeChatId = useChatStore((s) => s.activeChatId)
   const characters = useChatStore((s) => s.characters)
   const createChat = useChatStore((s) => s.createChat)
+  const toggleBookmarkMessage = useChatStore((s) => s.toggleBookmarkMessage)
+  const branchChat = useChatStore((s) => s.branchChat)
   const defaultModelId = useChatStore(() => {
-    // read from settings store directly
     const stored = localStorage.getItem('jamba-settings')
     if (stored) {
       try {
@@ -36,7 +37,7 @@ export function ChatView({
     return 'openai/gpt-4o-mini'
   })
 
-  const { sendMessage, isStreaming, cancelStream } = useStreamingChat()
+  const { sendMessage, regenerate, editAndResend, isStreaming, cancelStream } = useStreamingChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -60,15 +61,11 @@ export function ChatView({
     }
   }, [activeChat?.messages.length, activeChat?.messages[activeChat.messages.length - 1]?.content, isAtBottom])
 
-  function handleSend(content: string) {
+  function handleSend(content: string, imageUrl?: string) {
     const apiKey = (() => {
       const stored = localStorage.getItem('jamba-settings')
       if (stored) {
-        try {
-          return JSON.parse(stored).state?.apiKey ?? ''
-        } catch {
-          return ''
-        }
+        try { return JSON.parse(stored).state?.apiKey ?? '' } catch { return '' }
       }
       return ''
     })()
@@ -82,15 +79,27 @@ export function ChatView({
     if (!chatId) {
       chatId = createChat(defaultModelId)
     }
-    sendMessage(chatId, content)
+    sendMessage(chatId, content, imageUrl)
   }
 
-  // Empty state — no active chat
+  function handleRegenerate() {
+    if (activeChatId) regenerate(activeChatId)
+  }
+
+  function handleEdit(messageId: string, newContent: string) {
+    if (activeChatId) editAndResend(activeChatId, messageId, newContent)
+  }
+
+  function handleBranch(messageId: string) {
+    if (activeChatId) branchChat(activeChatId, messageId)
+  }
+
+  // Empty state
   if (!activeChat) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 app-bg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2 accent-text">Jamba</h1>
+          <h1 className="text-3xl font-bold mb-2 accent-text">OpenStarChat</h1>
           <p className="text-muted text-sm">Your OpenRouter chat interface</p>
         </div>
         <div className="flex flex-wrap gap-3 justify-center">
@@ -127,6 +136,8 @@ export function ChatView({
     )
   }
 
+  const visibleMessages = activeChat.messages.filter((m) => m.role !== 'system')
+
   return (
     <div className="flex-1 flex flex-col min-h-0 app-bg">
       {/* Chat header */}
@@ -136,10 +147,7 @@ export function ChatView({
       >
         <div className="flex items-center gap-2 min-w-0">
           {character && (
-            <span
-              className="text-lg"
-              title={character.name}
-            >
+            <span className="text-lg" title={character.name}>
               {character.emoji}
             </span>
           )}
@@ -171,11 +179,19 @@ export function ChatView({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto min-h-0 py-2"
       >
-        {activeChat.messages
-          .filter((m) => m.role !== 'system')
-          .map((msg) => (
-            <Message key={msg.id} message={msg} />
-          ))}
+        {visibleMessages.map((msg, idx) => (
+          <Message
+            key={msg.id}
+            message={msg}
+            chatId={activeChat.id}
+            isLast={idx === visibleMessages.length - 1}
+            isStreaming={isStreaming}
+            onBookmark={(msgId) => toggleBookmarkMessage(activeChat.id, msgId)}
+            onEdit={handleEdit}
+            onRegenerate={handleRegenerate}
+            onBranch={handleBranch}
+          />
+        ))}
         <div ref={bottomRef} />
       </div>
 

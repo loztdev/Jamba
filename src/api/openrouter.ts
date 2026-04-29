@@ -7,7 +7,7 @@ function headers(apiKey: string): Record<string, string> {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'HTTP-Referer': window.location.origin,
-    'X-Title': 'Jamba',
+    'X-Title': 'OpenStarChat',
   }
 }
 
@@ -23,10 +23,32 @@ export async function fetchModels(apiKey: string): Promise<Model[]> {
   return (data.data as Model[]) ?? []
 }
 
+export type ApiMessagePart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+
+export type ApiMessage = {
+  role: 'user' | 'assistant' | 'system'
+  content: string | ApiMessagePart[]
+}
+
+function buildApiMessage(msg: Pick<Message, 'role' | 'content' | 'imageUrl'>): ApiMessage {
+  if (msg.role === 'user' && msg.imageUrl) {
+    return {
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: msg.imageUrl } },
+        { type: 'text', text: msg.content },
+      ],
+    }
+  }
+  return { role: msg.role, content: msg.content }
+}
+
 export interface CompleteChatOptions {
   apiKey: string
   modelId: string
-  messages: Pick<Message, 'role' | 'content'>[]
+  messages: Pick<Message, 'role' | 'content' | 'imageUrl'>[]
   systemPrompt?: string
   signal?: AbortSignal
   temperature?: number
@@ -34,6 +56,10 @@ export interface CompleteChatOptions {
 
 export async function completeChat(opts: CompleteChatOptions): Promise<string> {
   const { apiKey, modelId, messages, systemPrompt, signal, temperature } = opts
+  const apiMessages: ApiMessage[] = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...messages.map(buildApiMessage)]
+    : messages.map(buildApiMessage)
+
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: headers(apiKey),
@@ -42,9 +68,7 @@ export async function completeChat(opts: CompleteChatOptions): Promise<string> {
       model: modelId,
       stream: false,
       ...(temperature !== undefined ? { temperature } : {}),
-      messages: systemPrompt
-        ? [{ role: 'system', content: systemPrompt }, ...messages]
-        : [...messages],
+      messages: apiMessages,
     }),
   })
   if (!res.ok) {
@@ -62,10 +86,10 @@ export async function completeChat(opts: CompleteChatOptions): Promise<string> {
 export type StreamChatOptions = {
   apiKey: string
   modelId: string
-  messages: Pick<Message, 'role' | 'content'>[]
+  messages: Pick<Message, 'role' | 'content' | 'imageUrl'>[]
   systemPrompt?: string
   onDelta: (delta: string) => void
-  onDone: () => void
+  onDone: (tokenCount?: number) => void
   onError: (err: Error) => void
 }
 
@@ -73,17 +97,9 @@ export function streamChat(opts: StreamChatOptions): () => void {
   const { apiKey, modelId, messages, systemPrompt, onDelta, onDone, onError } = opts
   const controller = new AbortController()
 
-  const payload: {
-    model: string
-    messages: { role: string; content: string }[]
-    stream: boolean
-  } = {
-    model: modelId,
-    stream: true,
-    messages: systemPrompt
-      ? [{ role: 'system', content: systemPrompt }, ...messages]
-      : [...messages],
-  }
+  const apiMessages: ApiMessage[] = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...messages.map(buildApiMessage)]
+    : messages.map(buildApiMessage)
 
   ;(async () => {
     let res: Response
@@ -91,7 +107,7 @@ export function streamChat(opts: StreamChatOptions): () => void {
       res = await fetch(`${BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: headers(apiKey),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ model: modelId, stream: true, messages: apiMessages }),
         signal: controller.signal,
       })
     } catch (err) {
@@ -108,12 +124,13 @@ export function streamChat(opts: StreamChatOptions): () => void {
     const reader = res.body!.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    let totalChars = 0
 
     try {
       while (true) {
         const { done, value } = await reader.read()
         if (done) {
-          onDone()
+          onDone(Math.ceil(totalChars / 4))
           break
         }
 
@@ -126,13 +143,14 @@ export function streamChat(opts: StreamChatOptions): () => void {
           if (!trimmed.startsWith('data: ')) continue
           const data = trimmed.slice(6)
           if (data === '[DONE]') {
-            onDone()
+            onDone(Math.ceil(totalChars / 4))
             return
           }
           try {
             const parsed = JSON.parse(data)
             const delta = parsed.choices?.[0]?.delta?.content
             if (typeof delta === 'string' && delta) {
+              totalChars += delta.length
               onDelta(delta)
             }
           } catch {

@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react'
-import { Send, Square, ChevronDown } from 'lucide-react'
+import { useRef, useEffect, useState } from 'react'
+import { Send, Square, ChevronDown, Paperclip, X } from 'lucide-react'
 import clsx from 'clsx'
 import type { Chat, Character } from '../../types'
 
@@ -7,7 +7,7 @@ interface ChatInputProps {
   chat: Chat
   character: Character | null
   isStreaming: boolean
-  onSend: (content: string) => void
+  onSend: (content: string, imageUrl?: string) => void
   onCancel: () => void
   onOpenModelPicker: () => void
   onOpenCharacters: () => void
@@ -23,6 +23,9 @@ export function ChatInput({
   onOpenCharacters,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [attachedImage, setAttachedImage] = useState<string | null>(null)
+  const [attachedName, setAttachedName] = useState<string>('')
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -40,12 +43,27 @@ export function ChatInput({
 
   function submit() {
     const val = textareaRef.current?.value.trim()
-    if (!val || isStreaming) return
+    if ((!val && !attachedImage) || isStreaming) return
     if (textareaRef.current) textareaRef.current.value = ''
-    onSend(val)
+    const img = attachedImage ?? undefined
+    setAttachedImage(null)
+    setAttachedName('')
+    onSend(val ?? '', img)
   }
 
-  // Extract provider from model id like "openai/gpt-4o" → "openai"
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setAttachedImage(reader.result as string)
+      setAttachedName(file.name)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   const modelParts = chat.modelId.split('/')
   const provider = modelParts[0] ?? ''
   const modelShort = modelParts.slice(1).join('/') || chat.modelId
@@ -55,7 +73,7 @@ export function ChatInput({
       className="border-t border-subtle p-3"
       style={{ background: 'var(--bg-secondary)' }}
     >
-      {/* Context bar: model + character */}
+      {/* Context bar */}
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <button
           onClick={onOpenModelPicker}
@@ -99,11 +117,42 @@ export function ChatInput({
         )}
       </div>
 
+      {/* Image preview */}
+      {attachedImage && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <img src={attachedImage} alt="Attachment preview" className="h-12 w-12 object-cover rounded-lg border border-subtle" />
+          <span className="text-xs text-muted truncate flex-1">{attachedName}</span>
+          <button
+            onClick={() => { setAttachedImage(null); setAttachedName('') }}
+            className="btn-ghost p-1 rounded"
+            title="Remove image"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Input row */}
       <div
         className="flex items-end gap-2 rounded-xl border border-subtle p-2"
         style={{ background: 'var(--bg-tertiary)' }}
       >
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="shrink-0 p-1.5 rounded-lg btn-ghost"
+          title="Attach image"
+          disabled={isStreaming}
+        >
+          <Paperclip size={15} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <textarea
           ref={textareaRef}
           rows={1}
@@ -113,6 +162,7 @@ export function ChatInput({
           className="flex-1 bg-transparent outline-none resize-none text-sm leading-relaxed min-h-[1.5rem] max-h-[200px]"
           style={{ color: 'var(--text-primary)' }}
         />
+
         {isStreaming ? (
           <button
             onClick={onCancel}
@@ -126,7 +176,7 @@ export function ChatInput({
           <button
             onClick={submit}
             className="shrink-0 p-2 rounded-lg btn-primary"
-            title="Send"
+            title="Send (Enter)"
           >
             <Send size={14} />
           </button>

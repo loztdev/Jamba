@@ -1,4 +1,4 @@
-export type ThemeName = 'dark' | 'amoled' | 'light' | 'dracula' | 'nord' | 'cyberpunk' | 'solarized'
+export type ThemeName = 'dark' | 'amoled' | 'light' | 'dracula' | 'nord' | 'cyberpunk' | 'solarized' | 'custom'
 
 export interface Model {
   id: string
@@ -11,14 +11,20 @@ export interface Model {
     completion: string
   }
   description?: string
+  architecture?: {
+    modality?: string
+  }
 }
 
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  imageUrl?: string
   createdAt: number
   isStreaming?: boolean
+  bookmarked?: boolean
+  tokenCount?: number
 }
 
 export interface Chat {
@@ -30,6 +36,7 @@ export interface Chat {
   messages: Message[]
   createdAt: number
   updatedAt: number
+  pinned?: boolean
 }
 
 export interface Character {
@@ -87,3 +94,31 @@ export const THEME_SWATCHES: ThemeSwatch[] = [
   { name: 'cyberpunk', label: 'Cyberpunk', bg: '#0d0d0d', accent: '#00ffff' },
   { name: 'solarized', label: 'Solarized', bg: '#002b36', accent: '#268bd2' },
 ]
+
+export type IdleAnimation = 'starfield' | 'shooting' | 'aurora' | 'random'
+
+export interface CustomThemeVars {
+  bgPrimary: string
+  bgSecondary: string
+  bgTertiary: string
+  textPrimary: string
+  textSecondary: string
+  accent: string
+  border: string
+  surface: string
+  userBubble: string
+  danger: string
+}
+
+export const DEFAULT_CUSTOM_THEME: CustomThemeVars = {
+  bgPrimary: '#1a1a2e',
+  bgSecondary: '#16213e',
+  bgTertiary: '#0f3460',
+  textPrimary: '#e0e0e0',
+  textSecondary: '#a0a0b0',
+  accent: '#e94560',
+  border: '#1a3a5c',
+  surface: '#0f3460',
+  userBubble: '#2d1b3d',
+  danger: '#ef4444',
+}

@@ -21,8 +21,16 @@ interface ChatState {
   setActiveChatId: (id: string | null) => void
   addMessage: (chatId: string, message: Omit<Message, 'id' | 'createdAt'>) => Message
   updateMessage: (chatId: string, messageId: string, content: string) => void
-  finalizeMessage: (chatId: string, messageId: string) => void
+  finalizeMessage: (chatId: string, messageId: string, tokenCount?: number) => void
+  deleteMessage: (chatId: string, messageId: string) => void
+  toggleBookmarkMessage: (chatId: string, messageId: string) => void
+  truncateMessagesAfter: (chatId: string, messageId: string) => void
+  togglePinChat: (id: string) => void
+  branchChat: (chatId: string, upToMessageId: string) => string
   exportChats: () => void
+  exportChatsMarkdown: () => void
+  exportChatsText: () => void
+  importChats: (chats: Chat[]) => void
 
   // Prompt actions
   addPrompt: (p: Omit<Prompt, 'id'>) => void
@@ -54,6 +62,7 @@ export const useChatStore = create<ChatState>()(
           messages: [],
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          pinned: false,
         }
         set((s) => ({ chats: [chat, ...s.chats], activeChatId: id }))
         return id
@@ -113,18 +122,96 @@ export const useChatStore = create<ChatState>()(
         }))
       },
 
-      finalizeMessage: (chatId, messageId) => {
+      finalizeMessage: (chatId, messageId, tokenCount) => {
         set((s) => ({
           chats: s.chats.map((c) => {
             if (c.id !== chatId) return c
             return {
               ...c,
               messages: c.messages.map((m) =>
-                m.id === messageId ? { ...m, isStreaming: false } : m
+                m.id === messageId
+                  ? { ...m, isStreaming: false, ...(tokenCount !== undefined ? { tokenCount } : {}) }
+                  : m
               ),
             }
           }),
         }))
+      },
+
+      deleteMessage: (chatId, messageId) => {
+        set((s) => ({
+          chats: s.chats.map((c) => {
+            if (c.id !== chatId) return c
+            return {
+              ...c,
+              messages: c.messages.filter((m) => m.id !== messageId),
+              updatedAt: Date.now(),
+            }
+          }),
+        }))
+      },
+
+      toggleBookmarkMessage: (chatId, messageId) => {
+        set((s) => ({
+          chats: s.chats.map((c) => {
+            if (c.id !== chatId) return c
+            return {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === messageId ? { ...m, bookmarked: !m.bookmarked } : m
+              ),
+            }
+          }),
+        }))
+      },
+
+      truncateMessagesAfter: (chatId, messageId) => {
+        set((s) => ({
+          chats: s.chats.map((c) => {
+            if (c.id !== chatId) return c
+            const idx = c.messages.findIndex((m) => m.id === messageId)
+            if (idx === -1) return c
+            return {
+              ...c,
+              messages: c.messages.slice(0, idx),
+              updatedAt: Date.now(),
+            }
+          }),
+        }))
+      },
+
+      togglePinChat: (id) => {
+        set((s) => ({
+          chats: s.chats.map((c) =>
+            c.id === id ? { ...c, pinned: !c.pinned } : c
+          ),
+        }))
+      },
+
+      branchChat: (chatId, upToMessageId) => {
+        const { chats } = get()
+        const source = chats.find((c) => c.id === chatId)
+        if (!source) return chatId
+
+        const idx = source.messages.findIndex((m) => m.id === upToMessageId)
+        const messages = source.messages.slice(0, idx + 1).map((m) => ({
+          ...m,
+          id: nanoid(),
+          createdAt: Date.now(),
+        }))
+
+        const newId = nanoid()
+        const newChat: Chat = {
+          ...source,
+          id: newId,
+          title: `${source.title} (branch)`,
+          messages,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          pinned: false,
+        }
+        set((s) => ({ chats: [newChat, ...s.chats], activeChatId: newId }))
+        return newId
       },
 
       exportChats: () => {
@@ -135,9 +222,66 @@ export const useChatStore = create<ChatState>()(
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `jamba-chats-${new Date().toISOString().slice(0, 10)}.json`
+        a.download = `openstarchat-${new Date().toISOString().slice(0, 10)}.json`
         a.click()
         URL.revokeObjectURL(url)
+      },
+
+      exportChatsMarkdown: () => {
+        const { chats } = get()
+        const lines: string[] = []
+        for (const chat of chats) {
+          lines.push(`# ${chat.title}`)
+          lines.push(`*Model: ${chat.modelId} | ${new Date(chat.createdAt).toLocaleString()}*`)
+          lines.push('')
+          for (const msg of chat.messages) {
+            if (msg.role === 'system') continue
+            lines.push(`### ${msg.role === 'user' ? 'You' : 'AI'}`)
+            lines.push(msg.content)
+            lines.push('')
+          }
+          lines.push('---')
+          lines.push('')
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `openstarchat-${new Date().toISOString().slice(0, 10)}.md`
+        a.click()
+        URL.revokeObjectURL(url)
+      },
+
+      exportChatsText: () => {
+        const { chats } = get()
+        const lines: string[] = []
+        for (const chat of chats) {
+          lines.push(`=== ${chat.title} ===`)
+          lines.push(`Model: ${chat.modelId} | ${new Date(chat.createdAt).toLocaleString()}`)
+          lines.push('')
+          for (const msg of chat.messages) {
+            if (msg.role === 'system') continue
+            lines.push(`[${msg.role === 'user' ? 'You' : 'AI'}]`)
+            lines.push(msg.content)
+            lines.push('')
+          }
+          lines.push('')
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `openstarchat-${new Date().toISOString().slice(0, 10)}.txt`
+        a.click()
+        URL.revokeObjectURL(url)
+      },
+
+      importChats: (incoming) => {
+        set((s) => {
+          const existingIds = new Set(s.chats.map((c) => c.id))
+          const newChats = incoming.filter((c) => !existingIds.has(c.id))
+          return { chats: [...newChats, ...s.chats] }
+        })
       },
 
       addPrompt: (p) => {
@@ -177,7 +321,6 @@ export const useChatStore = create<ChatState>()(
       partialize: (state) => ({
         chats: state.chats.map((c) => ({
           ...c,
-          // Clear streaming flag on persist
           messages: c.messages.map((m) => ({ ...m, isStreaming: false })),
         })),
         activeChatId: state.activeChatId,
