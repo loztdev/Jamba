@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Jamba</string>
-    <string name="title_activity_main">Jamba</string>
-    <string name="package_name">dev.lozt.jamba</string>
-    <string name="custom_url_scheme">dev.lozt.jamba</string>
+    <string name="app_name">OpenStarChat</string>
+    <string name="title_activity_main">OpenStarChat</string>
+    <string name="package_name">dev.lozt.openstarchat</string>
+    <string name="custom_url_scheme">dev.lozt.openstarchat</string>
 </resources>
