@@ -103,7 +103,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
     }),
     {
-      name: 'jamba-settings',
+      name: 'openstarchat-settings',
       onRehydrateStorage: () => (state) => {
         if (state?.theme === 'custom') {
           document.documentElement.setAttribute('data-theme', 'custom')

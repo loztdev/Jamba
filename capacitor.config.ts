@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'dev.lozt.jamba',
-  appName: 'Jamba',
+  appId: 'dev.lozt.openstarchat',
+  appName: 'OpenStarChat',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

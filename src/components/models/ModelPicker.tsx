@@ -94,7 +94,10 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
 
   useEffect(() => {
     if (!hasFetched && apiKey) loadModels()
-    setTimeout(() => searchRef.current?.focus(), 50)
+    const focusTimer = setTimeout(() => searchRef.current?.focus(), 50)
+    return () => clearTimeout(focusTimer)
+    // Run once on mount: fetch models and focus the search box.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { BookOpen, Users, Sparkles } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
+import { useSettingsStore } from '../../store/settingsStore'
 import { useStreamingChat } from '../../hooks/useStreamingChat'
 import { Message } from './Message'
 import { ChatInput } from './ChatInput'
@@ -25,17 +26,8 @@ export function ChatView({
   const createChat = useChatStore((s) => s.createChat)
   const toggleBookmarkMessage = useChatStore((s) => s.toggleBookmarkMessage)
   const branchChat = useChatStore((s) => s.branchChat)
-  const defaultModelId = useChatStore(() => {
-    const stored = localStorage.getItem('jamba-settings')
-    if (stored) {
-      try {
-        return JSON.parse(stored).state?.defaultModelId ?? 'openai/gpt-4o-mini'
-      } catch {
-        return 'openai/gpt-4o-mini'
-      }
-    }
-    return 'openai/gpt-4o-mini'
-  })
+  const defaultModelId = useSettingsStore((s) => s.defaultModelId)
+  const apiKey = useSettingsStore((s) => s.apiKey)
 
   const { sendMessage, regenerate, editAndResend, isStreaming, cancelStream } = useStreamingChat()
 
@@ -62,14 +54,6 @@ export function ChatView({
   }, [activeChat?.messages.length, activeChat?.messages[activeChat.messages.length - 1]?.content, isAtBottom])
 
   function handleSend(content: string, imageUrl?: string) {
-    const apiKey = (() => {
-      const stored = localStorage.getItem('jamba-settings')
-      if (stored) {
-        try { return JSON.parse(stored).state?.apiKey ?? '' } catch { return '' }
-      }
-      return ''
-    })()
-
     if (!apiKey) {
       onNeedApiKey()
       return
@@ -108,13 +92,6 @@ export function ChatView({
             title="New Chat"
             description="Start a fresh conversation"
             onClick={() => {
-              const apiKey = (() => {
-                const stored = localStorage.getItem('jamba-settings')
-                if (stored) {
-                  try { return JSON.parse(stored).state?.apiKey ?? '' } catch { return '' }
-                }
-                return ''
-              })()
               if (!apiKey) { onNeedApiKey(); return }
               createChat(defaultModelId)
             }}

@@ -317,7 +317,7 @@ export const useChatStore = create<ChatState>()(
       },
     }),
     {
-      name: 'jamba-chats',
+      name: 'openstarchat-chats',
       partialize: (state) => ({
         chats: state.chats.map((c) => ({
           ...c,

@@ -27,12 +27,16 @@ export function ChatInput({
   const [attachedImage, setAttachedImage] = useState<string | null>(null)
   const [attachedName, setAttachedName] = useState<string>('')
 
+  function autosize() {
+    const ta = textareaRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`
+  }
+
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
-    }
-  })
+    autosize()
+  }, [])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -44,7 +48,10 @@ export function ChatInput({
   function submit() {
     const val = textareaRef.current?.value.trim()
     if ((!val && !attachedImage) || isStreaming) return
-    if (textareaRef.current) textareaRef.current.value = ''
+    if (textareaRef.current) {
+      textareaRef.current.value = ''
+      autosize()
+    }
     const img = attachedImage ?? undefined
     setAttachedImage(null)
     setAttachedName('')
@@ -158,6 +165,7 @@ export function ChatInput({
           rows={1}
           placeholder="Message… (Enter to send, Shift+Enter for newline)"
           onKeyDown={handleKeyDown}
+          onInput={autosize}
           disabled={isStreaming}
           className="flex-1 bg-transparent outline-none resize-none text-sm leading-relaxed min-h-[1.5rem] max-h-[200px]"
           style={{ color: 'var(--text-primary)' }}
