@@ -1,4 +1,4 @@
-package dev.lozt.jamba;
+package dev.lozt.openstarchat;
 
 import com.getcapacitor.BridgeActivity;
 
