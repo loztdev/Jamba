@@ -47,6 +47,8 @@ export interface Character {
   systemPrompt: string
   tags: string[]
   description: string
+  avatarUrl?: string
+  notes?: string
   isBuiltIn?: boolean
 }
 

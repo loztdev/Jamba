@@ -4,12 +4,15 @@ import { ChatView } from './components/chat/ChatView'
 import { ModelPicker } from './components/models/ModelPicker'
 import { PromptLibrary } from './components/prompts/PromptLibrary'
 import { CharacterSelector } from './components/characters/CharacterSelector'
+import { CharactersPage } from './components/characters/CharactersPage'
 import { SettingsModal } from './components/settings/SettingsModal'
 import { BookmarksPanel } from './components/bookmarks/BookmarksPanel'
 import { Starfield } from './components/Starfield'
 import { useIdleTimer } from './hooks/useIdleTimer'
 import { useChatStore } from './store/chatStore'
 import { useSettingsStore } from './store/settingsStore'
+
+type MainView = 'chat' | 'characters'
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false)
@@ -18,6 +21,7 @@ export default function App() {
   const [showCharacters, setShowCharacters] = useState(false)
   const [showBookmarks, setShowBookmarks] = useState(false)
   const [isIdle, setIsIdle] = useState(false)
+  const [view, setView] = useState<MainView>('chat')
 
   const activeChatId = useChatStore((s) => s.activeChatId)
   const createChat = useChatStore((s) => s.createChat)
@@ -35,7 +39,6 @@ export default function App() {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       const ctrl = e.ctrlKey || e.metaKey
-      // Don't fire when typing in an input/textarea
       const tag = (e.target as HTMLElement).tagName.toLowerCase()
       const isInput = tag === 'input' || tag === 'textarea'
 
@@ -55,6 +58,7 @@ export default function App() {
           setShowModelPicker((v) => !v)
         } else if (e.key === 'n' || e.key === 'N') {
           e.preventDefault()
+          setView('chat')
           if (apiKey) createChat(defaultModelId)
           else setShowSettings(true)
         } else if (e.key === '/') {
@@ -66,6 +70,9 @@ export default function App() {
         } else if (e.key === ',') {
           e.preventDefault()
           setShowSettings((v) => !v)
+        } else if ((e.key === 'p' || e.key === 'P') && e.shiftKey) {
+          e.preventDefault()
+          setView((v) => (v === 'characters' ? 'chat' : 'characters'))
         }
       }
     }
@@ -76,6 +83,7 @@ export default function App() {
 
   function handleNavigateToChat(chatId: string) {
     setActiveChatId(chatId)
+    setView('chat')
   }
 
   return (
@@ -83,13 +91,20 @@ export default function App() {
       <AppLayout
         onOpenSettings={() => setShowSettings(true)}
         onOpenBookmarks={() => setShowBookmarks(true)}
+        view={view}
+        onChangeView={setView}
       >
-        <ChatView
-          onOpenModelPicker={() => setShowModelPicker(true)}
-          onOpenPrompts={() => setShowPrompts(true)}
-          onOpenCharacters={() => setShowCharacters(true)}
-          onNeedApiKey={() => setShowSettings(true)}
-        />
+        {view === 'chat' ? (
+          <ChatView
+            onOpenModelPicker={() => setShowModelPicker(true)}
+            onOpenPrompts={() => setShowPrompts(true)}
+            onOpenCharacters={() => setShowCharacters(true)}
+            onOpenCharactersPage={() => setView('characters')}
+            onNeedApiKey={() => setShowSettings(true)}
+          />
+        ) : (
+          <CharactersPage onBackToChat={() => setView('chat')} />
+        )}
       </AppLayout>
 
       {/* Modals */}
@@ -98,7 +113,15 @@ export default function App() {
         <ModelPicker onClose={() => setShowModelPicker(false)} chatId={activeChatId} />
       )}
       {showPrompts && <PromptLibrary onClose={() => setShowPrompts(false)} />}
-      {showCharacters && <CharacterSelector onClose={() => setShowCharacters(false)} />}
+      {showCharacters && (
+        <CharacterSelector
+          onClose={() => setShowCharacters(false)}
+          onOpenManager={() => {
+            setShowCharacters(false)
+            setView('characters')
+          }}
+        />
+      )}
       {showBookmarks && (
         <BookmarksPanel
           onClose={() => setShowBookmarks(false)}
