@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { BookOpen, Users, Sparkles } from 'lucide-react'
+import { BookOpen, Users, Sparkles, Menu } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useStreamingChat } from '../../hooks/useStreamingChat'
@@ -13,6 +13,7 @@ interface ChatViewProps {
   onOpenCharacters: () => void
   onOpenCharactersPage: () => void
   onNeedApiKey: () => void
+  onOpenSidebar: () => void
 }
 
 export function ChatView({
@@ -21,6 +22,7 @@ export function ChatView({
   onOpenCharacters,
   onOpenCharactersPage,
   onNeedApiKey,
+  onOpenSidebar,
 }: ChatViewProps) {
   const chats = useChatStore((s) => s.chats)
   const activeChatId = useChatStore((s) => s.activeChatId)
@@ -83,7 +85,21 @@ export function ChatView({
   // Empty state
   if (!activeChat) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 app-bg">
+      <div className="flex-1 flex flex-col min-h-0 app-bg">
+        <header
+          className="md:hidden flex items-center px-3 py-2 border-b border-subtle shrink-0"
+          style={{ background: 'var(--bg-secondary)' }}
+        >
+          <button
+            onClick={onOpenSidebar}
+            className="btn-ghost p-1.5 rounded-lg"
+            title="Open menu"
+            aria-label="Open menu"
+          >
+            <Menu size={18} />
+          </button>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-2 accent-text">OpenStarChat</h1>
           <p className="text-muted text-sm">Your OpenRouter chat interface</p>
@@ -111,6 +127,7 @@ export function ChatView({
             onClick={onOpenPrompts}
           />
         </div>
+        </div>
       </div>
     )
   }
@@ -125,6 +142,14 @@ export function ChatView({
         style={{ background: 'var(--bg-secondary)' }}
       >
         <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={onOpenSidebar}
+            className="btn-ghost p-1.5 rounded-lg shrink-0 md:hidden"
+            title="Open menu"
+            aria-label="Open menu"
+          >
+            <Menu size={18} />
+          </button>
           {character && (
             character.avatarUrl ? (
               <img

@@ -219,5 +219,28 @@ body {
 
 .fade-in { animation: fadeIn 0.15s ease-out; }
 
+/* Idle state: let the starfield canvas (z-0, behind UI) show through the app
+   background. Solid panels (sidebar, chat header, input bar, modals) keep their
+   own bg-secondary/tertiary colors and remain opaque. */
+body.is-idle .app-bg {
+  background-color: transparent !important;
+}
+body.is-idle {
+  background-color: transparent;
+}
+
+/* Sidebar overlay: slightly translucent + blurred on mobile so users can see
+   that something is layered above the content. Solid on desktop. */
+.sidebar-aside {
+  background-color: var(--bg-secondary);
+}
+@media (max-width: 767px) {
+  .sidebar-aside {
+    background-color: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+}
+
 /* Code block overrides for dark syntax themes */
 pre { border-radius: 0.5rem; overflow: hidden; }

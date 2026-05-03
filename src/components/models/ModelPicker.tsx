@@ -128,31 +128,31 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      className="fixed inset-0 z-40 flex items-stretch sm:items-center justify-center p-0 sm:p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full max-w-2xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl fade-in"
+        className="w-full max-w-2xl flex flex-col shadow-2xl fade-in rounded-none sm:rounded-2xl max-h-[100dvh] sm:max-h-[85svh]"
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-subtle shrink-0">
-          <h2 className="font-bold text-base">{title ?? 'Select Model'}</h2>
-          <div className="flex items-center gap-2">
+          <h2 className="font-bold text-base truncate">{title ?? 'Select Model'}</h2>
+          <div className="flex items-center gap-2 shrink-0">
             <button onClick={loadModels} className="btn-ghost p-1.5 rounded-lg" title="Refresh models">
               <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
             </button>
-            <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg">
+            <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg" aria-label="Close">
               <X size={16} />
             </button>
           </div>
         </div>
 
         {/* Search + sort row */}
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-subtle shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 sm:px-4 py-2 border-b border-subtle shrink-0">
           <div
-            className="flex items-center gap-2 flex-1 rounded-lg px-3 py-2"
+            className="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-3 py-2"
             style={{ background: 'var(--bg-tertiary)' }}
           >
             <Search size={14} className="text-muted shrink-0" />
@@ -161,15 +161,14 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
               value={localQuery}
               onChange={handleSearchChange}
               placeholder="Search models…"
-              className="flex-1 bg-transparent outline-none text-sm"
+              className="flex-1 min-w-0 bg-transparent outline-none text-sm"
               style={{ color: 'var(--text-primary)' }}
             />
           </div>
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as ModelSortKey)}
-            className="input-field text-xs py-2 w-auto"
-            style={{ width: 'auto', minWidth: '9rem' }}
+            className="input-field text-xs py-2 w-full sm:w-auto sm:min-w-[9rem]"
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>{o.label}</option>
