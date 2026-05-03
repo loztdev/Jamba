@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Plus, Edit2, Trash2, Check, Sparkles } from 'lucide-react'
+import { X, Plus, Edit2, Trash2, Check, Sparkles, Settings2 } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import clsx from 'clsx'
 import type { Character } from '../../types'
@@ -7,6 +7,7 @@ import { AICharacterBuilder } from './AICharacterBuilder'
 
 interface CharacterSelectorProps {
   onClose: () => void
+  onOpenManager?: () => void
 }
 
 const EMOJI_OPTIONS = ['🌸', '💻', '✍️', '🧙', '🃏', '🔮', '🦊', '🐉', '🌙', '⚡', '🎯', '🧪', '🤖', '👾', '🦋']
@@ -105,7 +106,7 @@ function CharacterForm({
   )
 }
 
-export function CharacterSelector({ onClose }: CharacterSelectorProps) {
+export function CharacterSelector({ onClose, onOpenManager }: CharacterSelectorProps) {
   const characters = useChatStore((s) => s.characters)
   const activeChatId = useChatStore((s) => s.activeChatId)
   const chats = useChatStore((s) => s.chats)
@@ -147,9 +148,21 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-subtle shrink-0">
           <h2 className="font-bold text-base">👤 Characters</h2>
-          <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            {onOpenManager && (
+              <button
+                onClick={onOpenManager}
+                className="btn-ghost text-xs flex items-center gap-1.5 border border-subtle rounded-lg"
+                title="Open the full Characters tab"
+              >
+                <Settings2 size={12} />
+                <span className="hidden sm:inline">Manage</span>
+              </button>
+            )}
+            <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 min-h-0">
@@ -234,12 +247,21 @@ export function CharacterSelector({ onClose }: CharacterSelectorProps) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="text-2xl w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                        style={{ background: `${char.color}22` }}
-                      >
-                        {char.emoji}
-                      </span>
+                      {char.avatarUrl ? (
+                        <img
+                          src={char.avatarUrl}
+                          alt={char.name}
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                          style={{ border: `1.5px solid ${char.color}` }}
+                        />
+                      ) : (
+                        <span
+                          className="text-2xl w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: `${char.color}22` }}
+                        >
+                          {char.emoji}
+                        </span>
+                      )}
                       <div>
                         <div className="font-semibold text-sm" style={{ color: char.color }}>{char.name}</div>
                         <div className="text-xs text-muted line-clamp-1">{char.description}</div>

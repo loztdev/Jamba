@@ -11,6 +11,7 @@ interface ChatViewProps {
   onOpenModelPicker: () => void
   onOpenPrompts: () => void
   onOpenCharacters: () => void
+  onOpenCharactersPage: () => void
   onNeedApiKey: () => void
 }
 
@@ -18,6 +19,7 @@ export function ChatView({
   onOpenModelPicker,
   onOpenPrompts,
   onOpenCharacters,
+  onOpenCharactersPage,
   onNeedApiKey,
 }: ChatViewProps) {
   const chats = useChatStore((s) => s.chats)
@@ -99,8 +101,8 @@ export function ChatView({
           <ActionCard
             icon={<Users size={18} />}
             title="Characters"
-            description="Choose a persona for the AI"
-            onClick={onOpenCharacters}
+            description="Browse, create, & transcribe personas"
+            onClick={onOpenCharactersPage}
           />
           <ActionCard
             icon={<BookOpen size={18} />}
@@ -124,9 +126,23 @@ export function ChatView({
       >
         <div className="flex items-center gap-2 min-w-0">
           {character && (
-            <span className="text-lg" title={character.name}>
-              {character.emoji}
-            </span>
+            character.avatarUrl ? (
+              <img
+                src={character.avatarUrl}
+                alt={character.name}
+                className="w-7 h-7 rounded-full object-cover shrink-0"
+                style={{ border: `1.5px solid ${character.color}` }}
+                title={character.name}
+              />
+            ) : (
+              <span
+                className="w-7 h-7 rounded-full flex items-center justify-center text-base shrink-0"
+                style={{ background: `${character.color}22` }}
+                title={character.name}
+              >
+                {character.emoji}
+              </span>
+            )
           )}
           <h2 className="font-semibold text-sm truncate">{activeChat.title}</h2>
         </div>
@@ -161,6 +177,7 @@ export function ChatView({
             key={msg.id}
             message={msg}
             chatId={activeChat.id}
+            character={character}
             isLast={idx === visibleMessages.length - 1}
             isStreaming={isStreaming}
             onBookmark={(msgId) => toggleBookmarkMessage(activeChat.id, msgId)}

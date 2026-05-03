@@ -104,7 +104,15 @@ export function ChatInput({
         >
           {character ? (
             <>
-              <span>{character.emoji}</span>
+              {character.avatarUrl ? (
+                <img
+                  src={character.avatarUrl}
+                  alt=""
+                  className="w-4 h-4 rounded-full object-cover"
+                />
+              ) : (
+                <span>{character.emoji}</span>
+              )}
               <span>{character.name}</span>
             </>
           ) : (

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   MessageSquare, Plus, Trash2, Settings, ChevronLeft, ChevronRight,
-  Download, Upload, Pin, PinOff, Search, Bookmark, ChevronDown,
+  Download, Upload, Pin, PinOff, Search, Bookmark, ChevronDown, Users,
 } from 'lucide-react'
 import { useChatStore } from '../../store/chatStore'
 import { useSettingsStore } from '../../store/settingsStore'
@@ -13,9 +13,13 @@ interface SidebarProps {
   onToggle: () => void
   onOpenSettings: () => void
   onOpenBookmarks: () => void
+  view: 'chat' | 'characters'
+  onChangeView: (v: 'chat' | 'characters') => void
 }
 
-export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenBookmarks }: SidebarProps) {
+export function Sidebar({
+  collapsed, onToggle, onOpenSettings, onOpenBookmarks, view, onChangeView,
+}: SidebarProps) {
   const chats = useChatStore((s) => s.chats)
   const activeChatId = useChatStore((s) => s.activeChatId)
   const createChat = useChatStore((s) => s.createChat)
@@ -35,6 +39,7 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenBookmarks }
 
   function handleNewChat() {
     createChat(defaultModelId)
+    onChangeView('chat')
   }
 
   function handleDeleteChat(id: string, e: React.MouseEvent) {
@@ -87,7 +92,7 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenBookmarks }
     return (
       <button
         key={chat.id}
-        onClick={() => setActiveChatId(chat.id)}
+        onClick={() => { setActiveChatId(chat.id); onChangeView('chat') }}
         className={clsx(
           'w-full flex items-center gap-2 px-2 py-2 mx-0 rounded-md text-left text-sm group transition-colors relative',
           isActive ? 'bg-accent text-white' : 'hover:bg-tertiary'
@@ -164,6 +169,40 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings, onOpenBookmarks }
         >
           <Plus size={16} />
           {!collapsed && <span>New Chat</span>}
+        </button>
+      </div>
+
+      {/* View tabs */}
+      <div className="px-2 pb-2 shrink-0 flex flex-col gap-1">
+        <button
+          onClick={() => onChangeView('chat')}
+          className={clsx(
+            'flex items-center gap-2 w-full text-sm rounded-lg px-2 py-1.5 transition-colors',
+            collapsed ? 'justify-center' : 'justify-start',
+            view === 'chat' ? 'tab-active' : 'btn-ghost'
+          )}
+          style={view === 'chat'
+            ? { background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }
+            : undefined}
+          title="Chats"
+        >
+          <MessageSquare size={15} />
+          {!collapsed && <span className="font-medium">Chats</span>}
+        </button>
+        <button
+          onClick={() => onChangeView('characters')}
+          className={clsx(
+            'flex items-center gap-2 w-full text-sm rounded-lg px-2 py-1.5 transition-colors',
+            collapsed ? 'justify-center' : 'justify-start',
+            view === 'characters' ? '' : 'btn-ghost'
+          )}
+          style={view === 'characters'
+            ? { background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }
+            : undefined}
+          title="Characters (Ctrl+Shift+P)"
+        >
+          <Users size={15} />
+          {!collapsed && <span className="font-medium">Characters</span>}
         </button>
       </div>
 

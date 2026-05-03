@@ -5,11 +5,12 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Copy, Check, Bookmark, BookmarkCheck, Edit2, RefreshCw, GitBranch, X } from 'lucide-react'
 import clsx from 'clsx'
-import type { Message as MessageType } from '../../types'
+import type { Message as MessageType, Character } from '../../types'
 
 interface MessageProps {
   message: MessageType
   chatId: string
+  character?: Character | null
   isLast?: boolean
   isStreaming?: boolean
   onBookmark: (messageId: string) => void
@@ -44,6 +45,7 @@ function estimateCost(tokenCount: number): string | null {
 export function Message({
   message,
   chatId: _chatId,
+  character,
   isLast,
   isStreaming,
   onBookmark,
@@ -52,6 +54,7 @@ export function Message({
   onBranch,
 }: MessageProps) {
   const isUser = message.role === 'user'
+  const showCharAvatar = !isUser && !!character
   const [editing, setEditing] = useState(false)
   const [editDraft, setEditDraft] = useState(message.content)
 
@@ -75,19 +78,37 @@ export function Message({
         isUser ? 'flex-row-reverse' : 'flex-row'
       )}
     >
-      {/* Avatar dot */}
-      <div
-        className={clsx(
-          'shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5',
-        )}
-        style={
-          isUser
-            ? { background: 'var(--accent)', color: 'white' }
-            : { background: 'var(--surface)', color: 'var(--text-secondary)' }
-        }
-      >
-        {isUser ? 'U' : 'AI'}
-      </div>
+      {/* Avatar */}
+      {showCharAvatar && character ? (
+        character.avatarUrl ? (
+          <img
+            src={character.avatarUrl}
+            alt={character.name}
+            className="shrink-0 w-7 h-7 rounded-full object-cover mt-0.5"
+            style={{ border: `1.5px solid ${character.color}` }}
+            title={character.name}
+          />
+        ) : (
+          <div
+            className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-base mt-0.5"
+            style={{ background: `${character.color}22` }}
+            title={character.name}
+          >
+            {character.emoji}
+          </div>
+        )
+      ) : (
+        <div
+          className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
+          style={
+            isUser
+              ? { background: 'var(--accent)', color: 'white' }
+              : { background: 'var(--surface)', color: 'var(--text-secondary)' }
+          }
+        >
+          {isUser ? 'U' : 'AI'}
+        </div>
+      )}
 
       {/* Bubble */}
       <div className={clsx('flex flex-col gap-1 max-w-[80%]', isUser ? 'items-end' : 'items-start')}>
