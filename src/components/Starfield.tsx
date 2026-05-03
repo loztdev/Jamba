@@ -204,7 +204,7 @@ function drawAurora(canvas: HTMLCanvasElement): () => void {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function Starfield({ onDismiss, animationType }: StarfieldProps) {
+export function Starfield({ onDismiss: _onDismiss, animationType }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -231,18 +231,24 @@ export function Starfield({ onDismiss, animationType }: StarfieldProps) {
       cleanup = drawStarfield(canvas)
     }
 
+    // Mark <body> so global styles can let the starfield show through transparent
+    // app-bg surfaces while idle. Any user input dismisses idle via useIdleTimer,
+    // which unmounts this component and removes the class.
+    document.body.classList.add('is-idle')
+
     return () => {
       cleanup()
       window.removeEventListener('resize', resize)
+      document.body.classList.remove('is-idle')
     }
   }, [animationType])
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-30"
-      style={{ cursor: 'pointer', background: '#000' }}
-      onClick={onDismiss}
+      aria-hidden
+      className="fixed inset-0 z-0 pointer-events-none"
+      style={{ background: '#000' }}
     />
   )
 }

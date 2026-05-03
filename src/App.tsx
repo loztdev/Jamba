@@ -22,6 +22,7 @@ export default function App() {
   const [showBookmarks, setShowBookmarks] = useState(false)
   const [isIdle, setIsIdle] = useState(false)
   const [view, setView] = useState<MainView>('chat')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const activeChatId = useChatStore((s) => s.activeChatId)
   const createChat = useChatStore((s) => s.createChat)
@@ -93,6 +94,8 @@ export default function App() {
         onOpenBookmarks={() => setShowBookmarks(true)}
         view={view}
         onChangeView={setView}
+        sidebarOpen={sidebarOpen}
+        onSidebarOpenChange={setSidebarOpen}
       >
         {view === 'chat' ? (
           <ChatView
@@ -101,9 +104,13 @@ export default function App() {
             onOpenCharacters={() => setShowCharacters(true)}
             onOpenCharactersPage={() => setView('characters')}
             onNeedApiKey={() => setShowSettings(true)}
+            onOpenSidebar={() => setSidebarOpen(true)}
           />
         ) : (
-          <CharactersPage onBackToChat={() => setView('chat')} />
+          <CharactersPage
+            onBackToChat={() => setView('chat')}
+            onOpenSidebar={() => setSidebarOpen(true)}
+          />
         )}
       </AppLayout>
 

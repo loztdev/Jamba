@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Users, Plus, ScrollText, Sparkles, Search, MessageSquarePlus, Edit2, Trash2,
-  Lock, Check, X, ArrowLeft, Wand2,
+  Lock, Check, X, ArrowLeft, Wand2, Menu,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useChatStore } from '../../store/chatStore'
@@ -15,9 +15,10 @@ type Tab = 'library' | 'create' | 'transcribe' | 'idea'
 
 interface CharactersPageProps {
   onBackToChat: () => void
+  onOpenSidebar: () => void
 }
 
-export function CharactersPage({ onBackToChat }: CharactersPageProps) {
+export function CharactersPage({ onBackToChat, onOpenSidebar }: CharactersPageProps) {
   const characters = useChatStore((s) => s.characters)
   const activeChatId = useChatStore((s) => s.activeChatId)
   const chats = useChatStore((s) => s.chats)
@@ -105,14 +106,22 @@ export function CharactersPage({ onBackToChat }: CharactersPageProps) {
       >
         <div className="flex items-center gap-2 min-w-0">
           <button
+            onClick={onOpenSidebar}
+            className="btn-ghost p-1.5 rounded-lg shrink-0 md:hidden"
+            title="Open menu"
+            aria-label="Open menu"
+          >
+            <Menu size={18} />
+          </button>
+          <button
             onClick={onBackToChat}
-            className="btn-ghost p-1.5 rounded-lg flex items-center gap-1.5"
+            className="btn-ghost p-1.5 rounded-lg flex items-center gap-1.5 shrink-0"
             title="Back to chat"
           >
             <ArrowLeft size={15} />
           </button>
-          <Users size={16} style={{ color: 'var(--accent)' }} />
-          <h2 className="font-bold text-base">Characters</h2>
+          <Users size={16} style={{ color: 'var(--accent)' }} className="shrink-0" />
+          <h2 className="font-bold text-base truncate">Characters</h2>
           <span className="text-xs text-muted hidden sm:inline">
             ({characters.length})
           </span>
