@@ -48,7 +48,6 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
   const models = useModelStore((s) => s.models)
   const isLoading = useModelStore((s) => s.isLoading)
   const error = useModelStore((s) => s.error)
-  const hasFetched = useModelStore((s) => s.hasFetched)
   const searchQuery = useModelStore((s) => s.searchQuery)
   const sortKey = useModelStore((s) => s.sortKey)
   const category = useModelStore((s) => s.category)
@@ -78,13 +77,15 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
   const [localQuery, setLocalQuery] = useState(searchQuery)
 
   async function loadModels() {
-    if (!apiKey) { setError('No API key set. Go to Settings.'); return }
     setLoading(true)
     setError(null)
     try {
       const data = await fetchModels(apiKey)
       setModels(data)
       setHasFetched(true)
+      if (data.length === 0) {
+        setError('OpenRouter returned an empty model list.')
+      }
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -93,7 +94,10 @@ export function ModelPicker({ onClose, chatId, onSelectModel, currentModelIdOver
   }
 
   useEffect(() => {
-    if (!hasFetched && apiKey) loadModels()
+    // Always (re)fetch when opening the picker if the store is empty — the
+    // previous gate was `!hasFetched`, which left the user stranded if a prior
+    // fetch returned an unexpected payload.
+    if (models.length === 0 && !isLoading) loadModels()
     const focusTimer = setTimeout(() => searchRef.current?.focus(), 50)
     return () => clearTimeout(focusTimer)
     // Run once on mount: fetch models and focus the search box.
