@@ -12,15 +12,24 @@ function headers(apiKey: string): Record<string, string> {
 }
 
 export async function fetchModels(apiKey: string): Promise<Model[]> {
-  const res = await fetch(`${BASE_URL}/models`, {
-    headers: headers(apiKey),
-  })
+  // OpenRouter's /models endpoint is public; auth is sent if available so that
+  // any private/preview models the user has access to also show up.
+  const reqHeaders: Record<string, string> = {
+    'HTTP-Referer': window.location.origin,
+    'X-Title': 'OpenStarChat',
+  }
+  if (apiKey) reqHeaders.Authorization = `Bearer ${apiKey}`
+
+  const res = await fetch(`${BASE_URL}/models`, { headers: reqHeaders })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`Failed to fetch models: ${res.status} ${text}`)
   }
-  const data = await res.json()
-  return (data.data as Model[]) ?? []
+  const payload = await res.json().catch(() => null) as { data?: unknown } | null
+  if (!payload || !Array.isArray(payload.data)) {
+    throw new Error('Unexpected response from /models — no `data` array.')
+  }
+  return payload.data as Model[]
 }
 
 export type ApiMessagePart =
