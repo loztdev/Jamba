@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { X, Send, Plus, RefreshCw, Loader } from 'lucide-react'
 import clsx from 'clsx'
 import { streamChat } from '../../api/openrouter'
@@ -10,6 +10,10 @@ interface CompareViewProps {
   onOpenModelPicker: (slot: number) => void
 }
 
+export interface CompareViewHandle {
+  setModelAtSlot: (slot: number, modelId: string) => void
+}
+
 interface ResponseEntry {
   modelId: string
   content: string
@@ -17,7 +21,8 @@ interface ResponseEntry {
   error?: string
 }
 
-export function CompareView({ onClose, onOpenModelPicker }: CompareViewProps) {
+export const CompareView = forwardRef<CompareViewHandle, CompareViewProps>(
+  function CompareView({ onClose, onOpenModelPicker }, ref) {
   const [models, setModels] = useState<string[]>([])
   const [input, setInput] = useState('')
   const [responses, setResponses] = useState<ResponseEntry[]>([])
@@ -27,13 +32,6 @@ export function CompareView({ onClose, onOpenModelPicker }: CompareViewProps) {
 
   const cancelFnsRef = useRef<(() => void)[]>([])
 
-  const addModelSlot = useCallback(() => {
-    if (models.length < 3) {
-      setModels((prev) => [...prev, ''])
-      onOpenModelPicker(models.length)
-    }
-  }, [models.length, onOpenModelPicker])
-
   const setModelAtSlot = useCallback((slot: number, modelId: string) => {
     setModels((prev) => {
       const next = [...prev]
@@ -41,6 +39,15 @@ export function CompareView({ onClose, onOpenModelPicker }: CompareViewProps) {
       return next
     })
   }, [])
+
+  useImperativeHandle(ref, () => ({ setModelAtSlot }), [setModelAtSlot])
+
+  const addModelSlot = useCallback(() => {
+    if (models.length < 3) {
+      setModels((prev) => [...prev, ''])
+      onOpenModelPicker(models.length)
+    }
+  }, [models.length, onOpenModelPicker])
   void setModelAtSlot
 
   const removeModelSlot = useCallback((slot: number) => {
@@ -297,6 +304,6 @@ export function CompareView({ onClose, onOpenModelPicker }: CompareViewProps) {
       </div>
     </div>
   )
-}
+})
 
 export { type CompareViewProps }
